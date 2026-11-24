@@ -5,26 +5,36 @@ definePageMeta({
   title: 'Operations Overview',
 })
 
-const { bins, utilization, fetchAll: fetchWarehouse } = useWarehouse()
-const { shipments, fetchShipments } = useDeliveries()
-const { snapshot, refresh: refreshInspector, open: openInspector } = useHexInspector()
+const { open: openInspector } = useHexInspector()
 
-const refreshing = ref(false)
+const [utilizationQuery, shipmentsQuery, inspectorQuery] = await Promise.all([
+  useWarehouseUtilization(),
+  useDeliveryShipments(),
+  useHexInspectorSnapshot(),
+])
 
-async function loadAll() {
-  refreshing.value = true
-  try {
-    await Promise.all([fetchWarehouse(), fetchShipments(), refreshInspector()])
-  }
-  finally {
-    refreshing.value = false
-  }
-}
+const utilization = computed(() => utilizationQuery.data.value ?? null)
+const shipments = computed(() => shipmentsQuery.data.value ?? [])
+const snapshot = computed(() => inspectorQuery.data.value ?? null)
 
-await useAsyncData('overview-init', async () => {
-  await loadAll()
-  return true
+const refreshing = computed(() =>
+  utilizationQuery.status.value === 'pending'
+  || shipmentsQuery.status.value === 'pending'
+  || inspectorQuery.status.value === 'pending',
+)
+
+const loadError = computed(() => {
+  const err = utilizationQuery.error.value ?? shipmentsQuery.error.value ?? inspectorQuery.error.value
+  return err ? formatApiError(err, 'Failed to load overview metrics').details : null
 })
+
+async function refreshAll() {
+  await Promise.all([
+    utilizationQuery.refresh(),
+    shipmentsQuery.refresh(),
+    inspectorQuery.refresh(),
+  ])
+}
 
 const activeShipmentsCount = computed(() =>
   shipments.value.filter(s => !s.isTerminal).length,
@@ -53,33 +63,75 @@ const zoneChartData = computed<ChartData[]>(() => {
   }))
 })
 
-const shipmentDistributionData = computed<ChartData[]>(() => {
+const lifecycleBreakdown = computed(() => {
   const counts = {
-    Active: 0,
-    Delivered: 0,
-    Exception: 0,
+    active: 0,
+    delivered: 0,
+    exception: 0,
+    cancelled: 0,
   }
   for (const s of shipments.value) {
     if (s.state === 'Delivered') {
-      counts.Delivered += 1
+      counts.delivered += 1
+    }
+    else if (s.state === 'Cancelled') {
+      counts.cancelled += 1
     }
     else if (s.state === 'DeliveryAttemptFailed' || s.state === 'ReturnedToWarehouse' || s.slaBreached) {
-      counts.Exception += 1
+      counts.exception += 1
     }
-    else if (s.state !== 'Cancelled') {
-      counts.Active += 1
+    else {
+      counts.active += 1
     }
   }
-  return [
-    { status: 'Active Transit', count: counts.Active },
-    { status: 'Delivered', count: counts.Delivered },
-    { status: 'Exceptions / SLA', count: counts.Exception },
-  ]
+  return counts
 })
+
+const shipmentDistributionData = computed<ChartData[]>(() => [
+  { status: 'Active Transit', count: lifecycleBreakdown.value.active },
+  { status: 'Delivered', count: lifecycleBreakdown.value.delivered },
+  { status: 'Exceptions / SLA', count: lifecycleBreakdown.value.exception },
+])
+
+const eventFilter = shallowRef<'all' | 'warehouse' | 'delivery'>('all')
+const eventTabs = [
+  { label: 'All Events', value: 'all' },
+  { label: 'Warehouse', value: 'warehouse' },
+  { label: 'Delivery', value: 'delivery' },
+]
+
+const filteredEvents = computed(() => {
+  const list = snapshot.value?.recentEvents ?? []
+  const scoped = eventFilter.value === 'all'
+    ? list
+    : list.filter(ev => ev.boundedContext === eventFilter.value)
+  return scoped.slice(0, 12)
+})
+
+const topologyItems = [
+  {
+    path: 'modules/hexagonal-kernel/',
+    role: 'Shared Platform',
+    badgeColor: 'neutral' as const,
+    summary: 'Pure domain primitives (Entity, AggregateRoot, DomainError), EventBusPort, ClockPort, TracingUseCaseDecorator, and build-time boundary guard.',
+  },
+  {
+    path: 'modules/warehouse/',
+    role: 'Bounded Context A',
+    badgeColor: 'primary' as const,
+    summary: 'WarehouseBin aggregate, Composite CargoUnit (Parcel/Pallet), StorageAllocationChain (Zone → Weight → Volume), and swappable SQLite/Memory adapters.',
+  },
+  {
+    path: 'modules/delivery/',
+    role: 'Bounded Context B',
+    badgeColor: 'info' as const,
+    summary: 'Shipment State Machine, CarrierStrategy pricing, DeliveryExceptionChain (3-attempt return), and LocalWarehouseStockAdapter ACL.',
+  },
+]
 </script>
 
 <template>
-  <UDashboardPanel id="overview-panel">
+  <UDashboardPanel id="overview-panel" class="min-w-0">
     <template #header>
       <UDashboardNavbar title="Operations Overview" icon="i-lucide-layout-dashboard">
         <template #leading>
@@ -92,7 +144,7 @@ const shipmentDistributionData = computed<ChartData[]>(() => {
             variant="ghost"
             icon="i-lucide-refresh-cw"
             :loading="refreshing"
-            @click="loadAll"
+            @click="refreshAll"
           >
             Refresh
           </UButton>
@@ -103,203 +155,254 @@ const shipmentDistributionData = computed<ChartData[]>(() => {
             icon="i-lucide-microscope"
             @click="openInspector"
           >
-            Architecture Inspector
+            Inspector
           </UButton>
         </template>
       </UDashboardNavbar>
     </template>
 
     <template #body>
-      <div class="space-y-6">
-        <!-- KPI Cards -->
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <UCard>
-            <div class="flex items-center justify-between">
-              <p class="text-xs font-medium text-muted">Warehouse Utilization</p>
+      <div class="mx-auto max-w-[1440px] space-y-6">
+        <UAlert
+          v-if="loadError"
+          color="error"
+          variant="subtle"
+          icon="i-lucide-alert-circle"
+          title="Unable to load live overview data"
+          :description="loadError"
+          :actions="[{ label: 'Retry', color: 'error', variant: 'outline', onClick: refreshAll }]"
+        />
+
+        <!-- Unified 4-Column Telemetry Strip -->
+        <section
+          aria-label="Key Operational Metrics"
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-default rounded-lg border border-default bg-elevated/30"
+        >
+          <div class="p-4 sm:p-5 flex flex-col justify-between gap-2">
+            <div class="flex items-center justify-between text-xs text-muted">
+              <span class="font-medium">Warehouse Utilization</span>
               <UIcon name="i-lucide-warehouse" class="size-4 text-primary" />
             </div>
-            <p class="mt-2 text-3xl font-bold text-highlighted">
-              {{ utilization?.overallUtilizationPercent ?? 0 }}%
-            </p>
-            <p class="mt-1 text-xs text-muted">
-              {{ utilization?.totalCargoUnits ?? 0 }} cargo units across {{ bins.length }} bins
-            </p>
-          </UCard>
+            <div>
+              <p class="text-3xl font-semibold tracking-tight tabular-nums text-highlighted">
+                {{ utilization?.overallUtilizationPercent ?? 0 }}%
+              </p>
+              <p class="mt-1 text-xs text-muted tabular-nums">
+                {{ utilization?.totalCargoUnits ?? 0 }} cargo units across {{ utilization?.totalBins ?? 0 }} bins
+              </p>
+            </div>
+          </div>
 
-          <UCard>
-            <div class="flex items-center justify-between">
-              <p class="text-xs font-medium text-muted">Active Shipments</p>
+          <div class="p-4 sm:p-5 flex flex-col justify-between gap-2">
+            <div class="flex items-center justify-between text-xs text-muted">
+              <span class="font-medium">Active Shipments</span>
               <UIcon name="i-lucide-truck" class="size-4 text-info" />
             </div>
-            <p class="mt-2 text-3xl font-bold text-highlighted">
-              {{ activeShipmentsCount }}
-            </p>
-            <p class="mt-1 text-xs text-muted">
-              {{ shipments.length }} total shipments tracked
-            </p>
-          </UCard>
+            <div>
+              <p class="text-3xl font-semibold tracking-tight tabular-nums text-highlighted">
+                {{ activeShipmentsCount }}
+              </p>
+              <p class="mt-1 text-xs text-muted tabular-nums">
+                {{ shipments.length }} total shipments tracked
+              </p>
+            </div>
+          </div>
 
-          <UCard>
-            <div class="flex items-center justify-between">
-              <p class="text-xs font-medium text-muted">On-Time SLA Rate</p>
+          <div class="p-4 sm:p-5 flex flex-col justify-between gap-2">
+            <div class="flex items-center justify-between text-xs text-muted">
+              <span class="font-medium">On-Time SLA Rate</span>
               <UIcon name="i-lucide-shield-check" class="size-4 text-success" />
             </div>
-            <p class="mt-2 text-3xl font-bold text-success">
-              {{ onTimeRatePercent }}%
-            </p>
-            <p class="mt-1 text-xs text-muted">
-              Evaluated deterministically via ClockPort
-            </p>
-          </UCard>
+            <div>
+              <p class="text-3xl font-semibold tracking-tight tabular-nums text-success">
+                {{ onTimeRatePercent }}%
+              </p>
+              <p class="mt-1 text-xs text-muted">
+                Deterministic ClockPort window
+              </p>
+            </div>
+          </div>
 
-          <UCard>
-            <div class="flex items-center justify-between">
-              <p class="text-xs font-medium text-muted">Active SLA Breaches</p>
+          <div class="p-4 sm:p-5 flex flex-col justify-between gap-2">
+            <div class="flex items-center justify-between text-xs text-muted">
+              <span class="font-medium">Active SLA Breaches</span>
               <UIcon
                 name="i-lucide-alarm-clock-off"
                 class="size-4"
                 :class="slaBreachCount > 0 ? 'text-error' : 'text-muted'"
               />
             </div>
-            <p
-              class="mt-2 text-3xl font-bold"
-              :class="slaBreachCount > 0 ? 'text-error' : 'text-highlighted'"
-            >
-              {{ slaBreachCount }}
-            </p>
-            <p class="mt-1 text-xs text-muted">
-              Advance Virtual Clock in Inspector to simulate
-            </p>
-          </UCard>
-        </div>
+            <div>
+              <p
+                class="text-3xl font-semibold tracking-tight tabular-nums"
+                :class="slaBreachCount > 0 ? 'text-error' : 'text-highlighted'"
+              >
+                {{ slaBreachCount }}
+              </p>
+              <p class="mt-1 text-xs text-muted">
+                {{ slaBreachCount > 0 ? 'Requires immediate dispatch review' : 'All active SLAs within window' }}
+              </p>
+            </div>
+          </div>
+        </section>
 
-        <!-- Charts Row -->
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <UCard>
+        <!-- Asymmetric Analytics Grid (7 / 5) -->
+        <section class="grid grid-cols-1 gap-4 lg:grid-cols-12">
+          <UCard class="lg:col-span-7">
             <template #header>
-              <div class="flex items-center justify-between">
+              <div class="flex items-center justify-between gap-3">
                 <div>
                   <h2 class="text-sm font-semibold text-highlighted">
                     Warehouse Utilization by Zone (%)
                   </h2>
                   <p class="text-xs text-muted">
-                    Aggregated from <code>modules/warehouse/</code>
+                    Peak weight or volume load per bounded storage zone
                   </p>
                 </div>
-                <UButton size="xs" color="neutral" variant="ghost" to="/warehouse" trailing-icon="i-lucide-arrow-right">
+                <UButton size="xs" color="neutral" variant="outline" to="/warehouse" trailing-icon="i-lucide-arrow-right">
                   Open WMS
                 </UButton>
               </div>
             </template>
 
-            <UChart
-              v-if="zoneChartData.length > 0"
-              type="bar"
-              :data="zoneChartData"
-              index="zone"
-              :categories="[{ key: 'utilization', label: 'Utilization %', color: 'primary' }]"
-              :height="220"
-              aria-label="Warehouse utilization percentage by storage zone"
-            />
+            <ClientOnly>
+              <UChart
+                v-if="zoneChartData.length > 0"
+                type="bar"
+                :data="zoneChartData"
+                index="zone"
+                :categories="[{ key: 'utilization', label: 'Utilization %', color: 'primary' }]"
+                :height="230"
+                aria-label="Warehouse utilization percentage by storage zone"
+              />
+              <div v-else class="grid grid-cols-3 gap-3 py-8">
+                <USkeleton v-for="n in 3" :key="n" class="h-32 w-full" />
+              </div>
+              <template #fallback>
+                <USkeleton class="h-[230px] w-full" />
+              </template>
+            </ClientOnly>
           </UCard>
 
-          <UCard>
+          <UCard class="lg:col-span-5">
             <template #header>
-              <div class="flex items-center justify-between">
+              <div class="flex items-center justify-between gap-3">
                 <div>
                   <h2 class="text-sm font-semibold text-highlighted">
                     Shipment Status Breakdown
                   </h2>
                   <p class="text-xs text-muted">
-                    Aggregated from <code>modules/delivery/</code>
+                    Current TMS lifecycle distribution
                   </p>
                 </div>
-                <UButton size="xs" color="neutral" variant="ghost" to="/deliveries" trailing-icon="i-lucide-arrow-right">
+                <UButton size="xs" color="neutral" variant="outline" to="/deliveries" trailing-icon="i-lucide-arrow-right">
                   Open TMS
                 </UButton>
               </div>
             </template>
 
-            <UChart
-              v-if="shipmentDistributionData.length > 0"
-              type="donut"
-              :data="shipmentDistributionData"
-              index="status"
-              :categories="[{ key: 'count', label: 'Shipments' }]"
-              :colors="['info', 'success', 'error']"
-              :height="220"
-              aria-label="Shipment breakdown by lifecycle status"
-            />
-          </UCard>
-        </div>
-
-        <!-- Architecture & Recent Domain Events -->
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <UCard>
-            <template #header>
-              <div class="flex items-center justify-between">
-                <h2 class="text-sm font-semibold text-highlighted">
-                  Modular Monolith Topology
-                </h2>
-                <UBadge color="success" variant="subtle" size="xs">
-                  4-Layer Guard Active
-                </UBadge>
-              </div>
-            </template>
-
-            <div class="space-y-3 text-xs">
-              <div class="rounded-lg border border-default p-3 space-y-1">
-                <div class="flex items-center justify-between">
-                  <span class="font-mono font-semibold text-highlighted">modules/hexagonal-kernel/</span>
-                  <UBadge color="neutral" variant="outline" size="xs">Shared Platform</UBadge>
+            <div class="space-y-4">
+              <ClientOnly>
+                <UChart
+                  v-if="shipments.length > 0"
+                  type="donut"
+                  :data="shipmentDistributionData"
+                  index="status"
+                  :categories="[{ key: 'count', label: 'Shipments' }]"
+                  :colors="['info', 'success', 'error']"
+                  :height="175"
+                  aria-label="Shipment breakdown by lifecycle status"
+                />
+                <template #fallback>
+                  <USkeleton class="h-[175px] w-full" />
+                </template>
+              </ClientOnly>
+              <div class="grid grid-cols-3 divide-x divide-default border-t border-default pt-3 text-center">
+                <div>
+                  <p class="text-xs text-muted">In Flight</p>
+                  <p class="text-sm font-semibold tabular-nums text-info">{{ lifecycleBreakdown.active }}</p>
                 </div>
-                <p class="text-muted">
-                  Pure domain primitives (Entity, AggregateRoot, ValueObject, DomainEvent, DomainError), EventBusPort, ClockPort, TracingUseCaseDecorator, and build-time boundary guard.
-                </p>
-              </div>
-
-              <div class="rounded-lg border border-default p-3 space-y-1">
-                <div class="flex items-center justify-between">
-                  <span class="font-mono font-semibold text-highlighted">modules/warehouse/</span>
-                  <UBadge color="primary" variant="subtle" size="xs">Bounded Context A</UBadge>
+                <div>
+                  <p class="text-xs text-muted">Delivered</p>
+                  <p class="text-sm font-semibold tabular-nums text-success">{{ lifecycleBreakdown.delivered }}</p>
                 </div>
-                <p class="text-muted">
-                  WarehouseBin aggregate, Composite CargoUnit (Parcel/Pallet), StorageAllocationChain (Zone → Weight → Volume), and swappable InMemory/DrizzleSqlite adapters.
-                </p>
-              </div>
-
-              <div class="rounded-lg border border-default p-3 space-y-1">
-                <div class="flex items-center justify-between">
-                  <span class="font-mono font-semibold text-highlighted">modules/delivery/</span>
-                  <UBadge color="info" variant="subtle" size="xs">Bounded Context B</UBadge>
+                <div>
+                  <p class="text-xs text-muted">Exceptions</p>
+                  <p class="text-sm font-semibold tabular-nums text-error">{{ lifecycleBreakdown.exception }}</p>
                 </div>
-                <p class="text-muted">
-                  Shipment State Machine, CarrierStrategy pricing, DeliveryExceptionChain (3-attempt return), and LocalWarehouseStockAdapter (Anti-Corruption Layer).
-                </p>
               </div>
             </div>
           </UCard>
+        </section>
 
-          <UCard>
-            <template #header>
-              <div class="flex items-center justify-between">
+        <!-- Asymmetric Topology (5) & Live Domain Events (7) -->
+        <section class="grid grid-cols-1 gap-4 lg:grid-cols-12">
+          <div class="lg:col-span-5 rounded-lg border border-default bg-default p-4 sm:p-5 flex flex-col justify-between">
+            <div class="space-y-4">
+              <div class="flex items-center justify-between gap-2">
                 <h2 class="text-sm font-semibold text-highlighted">
-                  Recent Domain Events (AuditLogPort)
+                  Modular Monolith Topology
                 </h2>
-                <UBadge color="neutral" variant="subtle" size="xs">
-                  {{ snapshot?.recentEvents.length ?? 0 }} events
+                <UBadge color="success" variant="subtle" size="xs" icon="i-lucide-shield-check">
+                  Boundary Guard Active
                 </UBadge>
+              </div>
+
+              <div class="divide-y divide-default border-t border-default">
+                <div
+                  v-for="item in topologyItems"
+                  :key="item.path"
+                  class="py-3.5 first:pt-3.5 last:pb-0 space-y-1.5"
+                >
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="font-mono text-xs font-semibold text-highlighted">{{ item.path }}</span>
+                    <UBadge :color="item.badgeColor" variant="subtle" size="xs">{{ item.role }}</UBadge>
+                  </div>
+                  <p class="text-xs leading-relaxed text-muted">
+                    {{ item.summary }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-default flex items-center justify-between text-xs text-muted">
+              <span>Live traces captured: <strong class="tabular-nums text-highlighted">{{ snapshot?.traces.length ?? 0 }}</strong></span>
+              <UButton size="xs" color="neutral" variant="ghost" trailing-icon="i-lucide-arrow-up-right" @click="openInspector">
+                Inspect Ports
+              </UButton>
+            </div>
+          </div>
+
+          <UCard class="lg:col-span-7" :ui="{ body: 'p-0' }">
+            <template #header>
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                  <h2 class="text-sm font-semibold text-highlighted">
+                    Recent Domain Events (AuditLogPort)
+                  </h2>
+                  <UBadge color="neutral" variant="subtle" size="xs" class="tabular-nums">
+                    {{ snapshot?.recentEvents.length ?? 0 }} events
+                  </UBadge>
+                </div>
+
+                <UTabs
+                  v-model="eventFilter"
+                  :items="eventTabs"
+                  :content="false"
+                  size="xs"
+                  color="neutral"
+                />
               </div>
             </template>
 
-            <div v-if="snapshot && snapshot.recentEvents.length > 0" class="divide-y divide-default max-h-72 overflow-y-auto">
+            <div v-if="filteredEvents.length > 0" class="divide-y divide-default max-h-80 overflow-y-auto px-4 sm:px-5">
               <div
-                v-for="ev in snapshot.recentEvents.slice(0, 10)"
+                v-for="ev in filteredEvents"
                 :key="ev.id"
-                class="py-2 first:pt-0 last:pb-0 text-xs space-y-0.5"
+                class="py-2.5 text-xs space-y-1"
               >
                 <div class="flex items-center justify-between gap-2">
-                  <div class="flex items-center gap-1.5">
+                  <div class="flex items-center gap-2 min-w-0">
                     <UBadge
                       :color="ev.boundedContext === 'warehouse' ? 'primary' : 'info'"
                       variant="soft"
@@ -307,20 +410,31 @@ const shipmentDistributionData = computed<ChartData[]>(() => {
                     >
                       {{ ev.boundedContext }}
                     </UBadge>
-                    <span class="font-mono font-medium text-highlighted">{{ ev.eventName }}</span>
+                    <span class="truncate font-mono font-medium text-highlighted">{{ ev.eventName }}</span>
                   </div>
-                  <span class="font-mono text-[10px] text-dimmed">
-                    {{ new Date(ev.occurredAt).toLocaleTimeString() }}
-                  </span>
+                  <NuxtTime
+                    :datetime="ev.occurredAt"
+                    hour="2-digit"
+                    minute="2-digit"
+                    second="2-digit"
+                    class="shrink-0 font-mono text-[11px] text-dimmed"
+                  />
                 </div>
-                <p class="text-muted">{{ ev.summary }}</p>
+                <p class="text-muted leading-relaxed">{{ ev.summary }}</p>
               </div>
             </div>
-            <p v-else class="text-xs text-muted">
-              No domain events published yet.
-            </p>
+
+            <div v-else class="p-4">
+              <UEmpty
+                variant="naked"
+                size="sm"
+                icon="i-lucide-radio"
+                title="No domain events in this scope"
+                description="Trigger a Warehouse or Delivery command to publish domain events onto EventBusPort."
+              />
+            </div>
           </UCard>
-        </div>
+        </section>
       </div>
     </template>
   </UDashboardPanel>

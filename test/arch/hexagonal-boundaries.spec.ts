@@ -36,8 +36,7 @@ describe('Hexagonal & Modular Monolith Architectural Boundaries', () => {
 
       expect(rules).toContain('DOMAIN_PURITY')
       expect(rules).toContain('APPLICATION_ISOLATION')
-    }
-    finally {
+    } finally {
       rmSync(tempRoot, { recursive: true, force: true })
     }
   })

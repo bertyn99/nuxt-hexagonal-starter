@@ -4,7 +4,7 @@ import { mapDomainErrorToHttp } from '../../../../../hexagonal-kernel/runtime/se
 import { storageZoneSchema } from '../../../../shared/schemas/warehouse.schema'
 import { useWarehouseModule } from '../../utils/warehouse-container'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const log = useLogger(event)
   try {
     const query = getQuery(event)
@@ -18,8 +18,7 @@ export default defineEventHandler(async (event) => {
 
     log.set({ warehouse: { binCount: bins.length } })
     return bins
-  }
-  catch (error: unknown) {
+  } catch (error: unknown) {
     mapDomainErrorToHttp(error, event)
   }
 })

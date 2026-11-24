@@ -11,7 +11,12 @@ let refSeq = 500
 export class SimulatedCarrierGatewayAdapter implements CarrierGatewayPort {
   readonly adapterName = 'SimulatedCarrierGatewayAdapter'
 
-  constructor(private readonly faultState: CarrierFaultStateDto = { outageEnabled: false, extraDelayHours: 0 }) {}
+  constructor(
+    private readonly faultState: CarrierFaultStateDto = {
+      outageEnabled: false,
+      extraDelayHours: 0,
+    },
+  ) {}
 
   async dispatchShipment(request: CarrierDispatchRequest): Promise<CarrierDispatchReceipt> {
     if (this.faultState.outageEnabled) {
@@ -22,11 +27,12 @@ export class SimulatedCarrierGatewayAdapter implements CarrierGatewayPort {
     }
 
     refSeq += 1
-    const prefix = request.carrierMode === 'EXPRESS_AIR'
-      ? 'AIR'
-      : request.carrierMode === 'COLD_CHAIN_COURIER'
-        ? 'CRYO'
-        : 'GRD'
+    const prefix =
+      request.carrierMode === 'EXPRESS_AIR'
+        ? 'AIR'
+        : request.carrierMode === 'COLD_CHAIN_COURIER'
+          ? 'CRYO'
+          : 'GRD'
 
     return {
       carrierReference: `${prefix}-${refSeq.toString().padStart(5, '0')}`,

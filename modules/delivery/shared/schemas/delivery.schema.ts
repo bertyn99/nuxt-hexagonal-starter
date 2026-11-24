@@ -26,21 +26,32 @@ export const quoteShipmentRequestSchema = z.object({
   handlingClass: deliveryHandlingClassSchema,
 })
 
-export const advanceTransitRequestSchema = z.object({
-  locationNote: z.string().trim().max(140).optional(),
-}).optional()
+export const advanceTransitRequestSchema = z
+  .object({
+    locationNote: z.string().trim().max(140).optional(),
+  })
+  .optional()
 
-export const markDeliveredRequestSchema = z.object({
-  recipientNote: z.string().trim().max(140).optional(),
-}).optional()
+export const markDeliveredRequestSchema = z
+  .object({
+    recipientNote: z.string().trim().max(140).optional(),
+  })
+  .optional()
 
 export const recordAttemptFailureRequestSchema = z.object({
-  reason: z.string().trim().min(2, 'Please provide a failure reason').max(160).default('Recipient unavailable at dock'),
+  reason: z
+    .string()
+    .trim()
+    .min(2, 'Please provide a failure reason')
+    .max(160)
+    .default('Recipient unavailable at dock'),
 })
 
-export const cancelShipmentRequestSchema = z.object({
-  reason: z.string().trim().max(160).optional(),
-}).optional()
+export const cancelShipmentRequestSchema = z
+  .object({
+    reason: z.string().trim().max(160).optional(),
+  })
+  .optional()
 
 export type CreateShipmentRequest = z.infer<typeof createShipmentRequestSchema>
 export type QuoteShipmentRequest = z.infer<typeof quoteShipmentRequestSchema>

@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { HandlingClassDto, StorageZoneDto, WarehouseBinDto } from '../../../shared/types/warehouse'
+import type {
+  HandlingClassDto,
+  StorageZoneDto,
+  WarehouseBinDto,
+} from '../../../shared/types/warehouse'
 
 defineProps<{
   bin: WarehouseBinDto
@@ -16,6 +20,14 @@ const zoneColor: Record<StorageZoneDto, 'neutral' | 'info' | 'error'> = {
   HAZMAT: 'error',
 }
 
+const zoneIcon: Record<StorageZoneDto, string> = {
+  AMBIENT: 'i-lucide-thermometer',
+  COLD_CHAIN: 'i-lucide-snowflake',
+  HAZMAT: 'i-lucide-flame',
+}
+
+const labelize = (v: string) => v.charAt(0) + v.slice(1).toLowerCase().replaceAll('_', ' ')
+
 const handlingColor: Record<HandlingClassDto, 'neutral' | 'warning' | 'info' | 'error'> = {
   STANDARD: 'neutral',
   FRAGILE: 'warning',
@@ -25,29 +37,34 @@ const handlingColor: Record<HandlingClassDto, 'neutral' | 'warning' | 'info' | '
 </script>
 
 <template>
-  <UCard :ui="{ body: 'space-y-4 p-4' }">
+  <UCard :ui="{ body: 'space-y-4 p-4 sm:p-5' }">
     <div class="flex items-start justify-between gap-3">
-      <div>
-        <div class="flex items-center gap-2">
-          <h3 class="font-mono text-base font-semibold text-highlighted">
-            {{ bin.code }}
-          </h3>
-          <UBadge :color="zoneColor[bin.zone]" variant="subtle" size="xs">
-            {{ bin.zone }}
-          </UBadge>
-          <UBadge
-            v-if="bin.utilizationPercent >= 85"
-            color="warning"
-            variant="soft"
-            size="xs"
-            icon="i-lucide-alert-triangle"
-          >
-            Near Capacity
-          </UBadge>
+      <div class="flex items-start gap-2.5 min-w-0">
+        <div class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-default bg-elevated/60">
+          <UIcon :name="zoneIcon[bin.zone]" class="size-4 text-highlighted" />
         </div>
-        <p class="mt-0.5 text-xs text-muted">
-          {{ bin.cargoCount }} unit(s) stored • Peak utilization {{ bin.utilizationPercent }}%
-        </p>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h3 class="font-mono text-sm font-semibold text-highlighted">
+              {{ bin.code }}
+            </h3>
+            <UBadge :color="zoneColor[bin.zone]" variant="subtle" size="sm">
+              {{ labelize(bin.zone) }}
+            </UBadge>
+            <UBadge
+              v-if="bin.utilizationPercent >= 85"
+              color="warning"
+              variant="soft"
+              size="sm"
+              icon="i-lucide-alert-triangle"
+            >
+              Near Capacity
+            </UBadge>
+          </div>
+          <p class="mt-0.5 text-xs text-muted tabular-nums">
+            {{ bin.cargoCount }} unit(s) stored • Peak utilization {{ bin.utilizationPercent }}%
+          </p>
+        </div>
       </div>
 
       <UButton
@@ -61,84 +78,102 @@ const handlingColor: Record<HandlingClassDto, 'neutral' | 'warning' | 'info' | '
       </UButton>
     </div>
 
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <div class="space-y-1">
+    <div class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+      <div class="space-y-1.5">
         <div class="flex items-center justify-between text-xs">
           <span class="text-muted">Weight</span>
-          <span class="font-mono text-highlighted">
+          <span class="font-mono text-highlighted tabular-nums">
             {{ bin.usedWeightKg }} / {{ bin.maxWeightKg }} kg ({{ bin.weightUtilizationPercent }}%)
           </span>
         </div>
         <UProgress
           :model-value="bin.weightUtilizationPercent"
           :color="bin.weightUtilizationPercent >= 85 ? 'warning' : 'primary'"
-          size="sm"
+          size="xs"
+          :ui="{ indicator: bin.weightUtilizationPercent === 0 ? 'opacity-0' : '' }"
         />
       </div>
 
-      <div class="space-y-1">
+      <div class="space-y-1.5">
         <div class="flex items-center justify-between text-xs">
           <span class="text-muted">Volume</span>
-          <span class="font-mono text-highlighted">
+          <span class="font-mono text-highlighted tabular-nums">
             {{ bin.usedVolumeM3 }} / {{ bin.maxVolumeM3 }} m³ ({{ bin.volumeUtilizationPercent }}%)
           </span>
         </div>
         <UProgress
           :model-value="bin.volumeUtilizationPercent"
           :color="bin.volumeUtilizationPercent >= 85 ? 'warning' : 'info'"
-          size="sm"
+          size="xs"
+          :ui="{ indicator: bin.volumeUtilizationPercent === 0 ? 'opacity-0' : '' }"
         />
       </div>
     </div>
 
-    <div v-if="bin.storedCargo.length === 0" class="rounded-md border border-dashed border-default p-3 text-center text-xs text-muted">
-      Bin is currently empty.
-    </div>
+    <UEmpty
+      v-if="bin.storedCargo.length === 0"
+      variant="naked"
+      size="sm"
+      icon="i-lucide-inbox"
+      title="Bay is empty and ready for intake"
+      description="Store a parcel or composite pallet into this bay."
+      :actions="[{ label: `Store into ${bin.code}`, size: 'xs', color: 'neutral', variant: 'outline', onClick: () => emit('receiveIntoBin', bin.id) }]"
+    />
 
     <div v-else class="divide-y divide-default rounded-md border border-default">
       <div
         v-for="cargo in bin.storedCargo"
         :key="cargo.cargoId"
-        class="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-xs"
+        class="flex items-center justify-between gap-3 px-3 py-3"
       >
-        <div class="space-y-0.5 min-w-0">
-          <div class="flex items-center gap-1.5 flex-wrap">
-            <UBadge
-              :color="cargo.kind === 'PALLET' ? 'primary' : 'neutral'"
-              variant="outline"
-              size="xs"
-              :icon="cargo.kind === 'PALLET' ? 'i-lucide-layers' : 'i-lucide-box'"
-            >
-              {{ cargo.kind }}
-            </UBadge>
-            <span class="font-medium text-highlighted">{{ cargo.label }}</span>
-            <UBadge :color="handlingColor[cargo.handlingClass]" variant="subtle" size="xs">
-              {{ cargo.handlingClass }}
-            </UBadge>
-            <UBadge
-              :color="cargo.status === 'ALLOCATED' ? 'warning' : 'success'"
-              variant="soft"
-              size="xs"
-            >
-              {{ cargo.status }}
-            </UBadge>
+        <div class="flex min-w-0 items-start gap-3">
+          <div
+            class="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md"
+            :class="cargo.kind === 'PALLET' ? 'bg-primary/10 text-primary' : 'bg-elevated text-muted'"
+          >
+            <UIcon :name="cargo.kind === 'PALLET' ? 'i-lucide-layers' : 'i-lucide-box'" class="size-4" />
           </div>
-          <p class="font-mono text-[11px] text-muted">
-            {{ cargo.sku }} • {{ cargo.weightKg }} kg • {{ cargo.volumeM3 }} m³
-            <span v-if="cargo.kind === 'PALLET'"> • {{ cargo.itemCount }} nested parcels</span>
-          </p>
+          <div class="min-w-0 space-y-1">
+            <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span class="text-sm font-medium text-highlighted">{{ cargo.label }}</span>
+              <UBadge
+                v-if="cargo.handlingClass !== 'STANDARD'"
+                :color="handlingColor[cargo.handlingClass]"
+                variant="subtle"
+                size="sm"
+              >
+                {{ labelize(cargo.handlingClass) }}
+              </UBadge>
+              <UBadge
+                v-if="cargo.status === 'ALLOCATED'"
+                color="warning"
+                variant="soft"
+                size="sm"
+                icon="i-lucide-lock"
+              >
+                Allocated
+              </UBadge>
+            </div>
+            <p class="font-mono text-xs text-muted tabular-nums">
+              {{ cargo.sku }} · {{ cargo.weightKg }} kg · {{ cargo.volumeM3 }} m³
+              <span v-if="cargo.kind === 'PALLET'">· {{ cargo.itemCount }} nested parcels</span>
+            </p>
+          </div>
         </div>
 
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="ghost"
-          icon="i-lucide-trash-2"
-          :disabled="cargo.status === 'ALLOCATED'"
-          @click="emit('releaseCargo', cargo.cargoId)"
+        <UTooltip
+          :text="cargo.status === 'ALLOCATED' ? 'Allocated to shipment — cancel shipment to release' : 'Release from bin'"
         >
-          Release
-        </UButton>
+          <UButton
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            icon="i-lucide-trash-2"
+            :aria-label="`Release ${cargo.label}`"
+            :disabled="cargo.status === 'ALLOCATED'"
+            @click="emit('releaseCargo', cargo.cargoId)"
+          />
+        </UTooltip>
       </div>
     </div>
   </UCard>

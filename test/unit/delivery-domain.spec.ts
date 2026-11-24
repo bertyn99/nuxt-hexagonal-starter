@@ -13,9 +13,7 @@ import {
   resolveCarrierStrategy,
   TrackingNumber,
 } from '../../modules/delivery/core/domain'
-import {
-  EvaluateDeliverySlasUseCase,
-} from '../../modules/delivery/core/application'
+import { EvaluateDeliverySlasUseCase } from '../../modules/delivery/core/application'
 import {
   createDeliveryContainer,
   InMemoryShipmentRepository,
@@ -44,13 +42,17 @@ describe('Delivery Bounded Context — State Machine, Strategies, Chains & Clock
     expect(airQuote.cost.amountCents).toBeGreaterThan(0)
 
     // Express Air forbids HAZMAT & COLD_CHAIN
-    expect(() => air.quote({ weightKg: 10, volumeM3: 0.1, handlingClass: 'HAZMAT' }))
-      .toThrowError(CarrierHandlingNotSupportedError)
-    expect(() => air.quote({ weightKg: 10, volumeM3: 0.1, handlingClass: 'COLD_CHAIN' }))
-      .toThrowError(CarrierHandlingNotSupportedError)
+    expect(() => air.quote({ weightKg: 10, volumeM3: 0.1, handlingClass: 'HAZMAT' })).toThrowError(
+      CarrierHandlingNotSupportedError,
+    )
+    expect(() =>
+      air.quote({ weightKg: 10, volumeM3: 0.1, handlingClass: 'COLD_CHAIN' }),
+    ).toThrowError(CarrierHandlingNotSupportedError)
 
     const cold = resolveCarrierStrategy('COLD_CHAIN_COURIER')
-    expect(cold.quote({ weightKg: 10, volumeM3: 0.1, handlingClass: 'COLD_CHAIN' }).estimatedHours).toBe(18)
+    expect(
+      cold.quote({ weightKg: 10, volumeM3: 0.1, handlingClass: 'COLD_CHAIN' }).estimatedHours,
+    ).toBe(18)
   })
 
   it('enforces Shipment State Machine transitions and forbids cancelling once Dispatched', () => {
@@ -64,7 +66,9 @@ describe('Delivery Bounded Context — State Machine, Strategies, Chains & Clock
     expect(shipment.state).toBe('Dispatched')
 
     // Cancelling after dispatch MUST throw CannotCancelDispatchedShipmentError
-    expect(() => shipment.cancel('Changed mind', baseTime)).toThrowError(CannotCancelDispatchedShipmentError)
+    expect(() => shipment.cancel('Changed mind', baseTime)).toThrowError(
+      CannotCancelDispatchedShipmentError,
+    )
 
     expect(shipment.advanceTransit(baseTime)).toBe('InTransit')
     expect(shipment.advanceTransit(baseTime)).toBe('OutForDelivery')
@@ -143,7 +147,11 @@ describe('Delivery Bounded Context — State Machine, Strategies, Chains & Clock
     })
 
     const parcel = new ParcelBuilder().withId('cargo-cross-1').withHandlingClass('STANDARD').build()
-    const bin = new WarehouseBinBuilder().withId('bin-x1').withCode('BAY-X01').withCargo(parcel).build()
+    const bin = new WarehouseBinBuilder()
+      .withId('bin-x1')
+      .withCode('BAY-X01')
+      .withCargo(parcel)
+      .build()
     await warehouse.binRepository.save(bin)
 
     const delivery = createDeliveryContainer({
@@ -174,7 +182,10 @@ describe('Delivery Bounded Context — State Machine, Strategies, Chains & Clock
     await delivery.advanceTransit.execute({ shipmentId: created.id })
     await delivery.recordAttemptFailure.execute({ shipmentId: created.id, reason: 'Attempt 1' })
     await delivery.recordAttemptFailure.execute({ shipmentId: created.id, reason: 'Attempt 2' })
-    const finalFail = await delivery.recordAttemptFailure.execute({ shipmentId: created.id, reason: 'Attempt 3' })
+    const finalFail = await delivery.recordAttemptFailure.execute({
+      shipmentId: created.id,
+      reason: 'Attempt 3',
+    })
 
     expect(finalFail.shipment.state).toBe('ReturnedToWarehouse')
 

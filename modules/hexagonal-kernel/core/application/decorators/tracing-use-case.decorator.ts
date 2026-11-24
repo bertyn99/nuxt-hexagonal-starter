@@ -100,8 +100,7 @@ export class TracingUseCaseDecorator<TInput, TOutput> implements UseCase<TInput,
       })
 
       return result
-    }
-    catch (error: unknown) {
+    } catch (error: unknown) {
       const totalDurationMs = Math.max(0.1, Number((Date.now() - startMs).toFixed(2)))
       const isDomain = error instanceof DomainError
       const errorCode = isDomain ? error.code : 'UNEXPECTED_ERROR'

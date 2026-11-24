@@ -9,7 +9,7 @@ const faultUpdateSchema = z.object({
   extraDelayHours: z.number().min(0).max(168).optional(),
 })
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const log = useLogger(event)
   try {
     const kernel = useHexagonalKernel()
@@ -41,8 +41,7 @@ export default defineEventHandler(async (event) => {
       },
     })
     return snapshot
-  }
-  catch (error: unknown) {
+  } catch (error: unknown) {
     mapDomainErrorToHttp(error, event)
   }
 })

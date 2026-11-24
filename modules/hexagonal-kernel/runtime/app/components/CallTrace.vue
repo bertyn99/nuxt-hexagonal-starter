@@ -7,16 +7,16 @@ defineProps<{
 
 const layerColors: Record<string, 'primary' | 'info' | 'success' | 'warning' | 'neutral'> = {
   'driving-adapter': 'neutral',
-  'application': 'info',
-  'domain': 'primary',
+  application: 'info',
+  domain: 'primary',
   'driven-adapter': 'warning',
   'event-bus': 'success',
 }
 
 const layerLabels: Record<string, string> = {
   'driving-adapter': 'Driving Adapter',
-  'application': 'Application',
-  'domain': 'Pure Domain',
+  application: 'Application',
+  domain: 'Pure Domain',
   'driven-adapter': 'Driven Adapter',
   'event-bus': 'Event Bus',
 }
@@ -24,29 +24,29 @@ const layerLabels: Record<string, string> = {
 
 <template>
   <div class="space-y-3">
-    <div v-if="traces.length === 0" class="rounded-lg border border-dashed border-default p-4 text-center text-xs text-muted">
-      Trigger any Warehouse or Delivery action to capture a live Hexagonal call trace via <code>TracingUseCaseDecorator</code>.
-    </div>
+    <UEmpty
+      v-if="traces.length === 0"
+      icon="i-lucide-activity"
+      size="sm"
+      title="No hexagonal traces captured yet"
+      description="Trigger any Warehouse or Delivery action to capture a live trace via TracingUseCaseDecorator."
+    />
 
     <UCard
-      v-for="trace in traces.slice(0, 6)"
+      v-for="trace in traces.slice(0, 10)"
       :key="trace.traceId"
       :ui="{ body: 'space-y-2.5 p-3' }"
     >
       <div class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2 min-w-0">
-          <UBadge
-            :color="trace.status === 'ok' ? 'success' : 'error'"
-            variant="subtle"
-            size="xs"
-          >
+          <UBadge :color="trace.status === 'ok' ? 'success' : 'error'" variant="subtle" size="xs">
             {{ trace.boundedContext }}
           </UBadge>
           <span class="truncate font-mono text-xs font-semibold text-highlighted">
             {{ trace.useCaseName }}
           </span>
         </div>
-        <span class="shrink-0 font-mono text-[11px] text-muted">
+        <span class="shrink-0 font-mono text-[11px] text-muted tabular-nums">
           {{ trace.totalDurationMs }} ms
         </span>
       </div>
@@ -66,15 +66,15 @@ const layerLabels: Record<string, string> = {
               >
                 {{ layerLabels[step.layer] ?? step.layer }}
               </UBadge>
-              <span class="font-mono text-[11px] font-medium text-highlighted">{{ step.component }}</span>
+              <span class="font-mono text-[11px] font-medium text-highlighted">{{
+                step.component
+              }}</span>
             </div>
             <p class="text-[11px] text-muted leading-snug">
               {{ step.detail }}
             </p>
           </div>
-          <span class="shrink-0 font-mono text-[10px] text-dimmed">
-            {{ step.durationMs }}ms
-          </span>
+          <span class="shrink-0 font-mono text-[10px] text-dimmed tabular-nums">{{ step.durationMs }}ms</span>
         </div>
       </div>
 

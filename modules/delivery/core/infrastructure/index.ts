@@ -11,7 +11,10 @@ export {
   DrizzleSqliteDeliveryPersistenceFactory,
   selectDeliveryPersistenceFactory,
 } from './di/persistence-adapter.factory'
-export type { DeliveryPersistenceAdapterFactory, DeliveryPersistenceFamily } from './di/persistence-adapter.factory'
+export type {
+  DeliveryPersistenceAdapterFactory,
+  DeliveryPersistenceFamily,
+} from './di/persistence-adapter.factory'
 export { createDeliveryContainer } from './di/container'
 export type { DeliveryContainer } from './di/container'
 export { seedShipmentsIfEmpty } from './di/delivery-seed'

@@ -20,7 +20,8 @@ export async function useWarehouseModule(): Promise<WarehouseContainer> {
     kernel.registerModule({
       name: 'warehouse',
       boundedContext: 'WMS (Storage)',
-      description: 'Warehouse bins, composite Parcel/Pallet cargo units, and zone/capacity policies.',
+      description:
+        'Warehouse bins, composite Parcel/Pallet cargo units, and zone/capacity policies.',
       persistenceAdapter: warehouseInstance.adapterName,
       endpointsPrefix: '/api/warehouse/*',
       pagePath: '/warehouse',

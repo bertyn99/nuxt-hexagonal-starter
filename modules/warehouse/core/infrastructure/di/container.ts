@@ -36,9 +36,15 @@ export interface WarehouseContainer {
   readonly adapterName: string
   readonly binRepository: WarehouseBinRepositoryPort
   readonly receiveAndStoreCargo: UseCase<ReceiveAndStoreCargoInput, ReceiveAndStoreCargoOutput>
-  readonly allocateCargoForShipment: UseCase<AllocateCargoForShipmentInput, AllocateCargoForShipmentOutput>
+  readonly allocateCargoForShipment: UseCase<
+    AllocateCargoForShipmentInput,
+    AllocateCargoForShipmentOutput
+  >
   readonly releaseCargoFromBin: UseCase<ReleaseCargoFromBinInput, ReleaseCargoFromBinOutput>
-  readonly returnCargoToWarehouse: UseCase<ReturnCargoToWarehouseInput, ReturnCargoToWarehouseOutput>
+  readonly returnCargoToWarehouse: UseCase<
+    ReturnCargoToWarehouseInput,
+    ReturnCargoToWarehouseOutput
+  >
   readonly listBins: UseCase<ListWarehouseBinsInput, WarehouseBinView[]>
   readonly getUtilization: UseCase<void, WarehouseUtilizationView>
   readonly publicFacade: WarehousePublicFacade
@@ -62,17 +68,11 @@ export function createWarehouseContainer(deps: {
     drivingAdapter: string,
     domainComponent: string,
   ): UseCase<TIn, TOut> => {
-    return new TracingUseCaseDecorator(
-      useCase,
-      deps.traceCollector,
-      deps.clock,
-      deps.eventBus,
-      {
-        drivingAdapter,
-        domainComponent,
-        drivenAdapter: adapterName,
-      },
-    )
+    return new TracingUseCaseDecorator(useCase, deps.traceCollector, deps.clock, deps.eventBus, {
+      drivingAdapter,
+      domainComponent,
+      drivenAdapter: adapterName,
+    })
   }
 
   const receiveAndStoreCargo = wrap(
@@ -118,7 +118,7 @@ export function createWarehouseContainer(deps: {
   })
 
   // Cross-context event subscription: return cargo to available stock when delivery fails after 3 attempts
-  const unsubReturned = deps.eventBus.subscribe('ShipmentReturnedToWarehouse', async (event) => {
+  const unsubReturned = deps.eventBus.subscribe('ShipmentReturnedToWarehouse', async event => {
     const cargoId = event.payload.cargoId
     if (typeof cargoId === 'string' && cargoId.length > 0) {
       await returnCargoToWarehouse.execute({ cargoId })
@@ -126,21 +126,19 @@ export function createWarehouseContainer(deps: {
   })
 
   // Also release reservation if a pending shipment is cancelled
-  const unsubCancelled = deps.eventBus.subscribe('ShipmentCancelled', async (event) => {
+  const unsubCancelled = deps.eventBus.subscribe('ShipmentCancelled', async event => {
     const cargoId = event.payload.cargoId
     if (typeof cargoId === 'string' && cargoId.length > 0) {
       try {
         await returnCargoToWarehouse.execute({ cargoId })
-      }
-      catch {
+      } catch {
         // Cargo may already have been released manually
       }
     }
   })
 
-  const ready = deps.seed === false
-    ? Promise.resolve()
-    : seedWarehouseBinsIfEmpty(binRepository, deps.clock)
+  const ready =
+    deps.seed === false ? Promise.resolve() : seedWarehouseBinsIfEmpty(binRepository, deps.clock)
 
   return {
     adapterName,

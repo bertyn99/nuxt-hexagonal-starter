@@ -27,6 +27,9 @@ const ALLOWED_HANDLING_BY_ZONE: Record<StorageZone, readonly HandlingClass[]> = 
   HAZMAT: ['HAZMAT'],
 }
 
-export function isHandlingCompatibleWithZone(zone: StorageZone, handlingClass: HandlingClass): boolean {
+export function isHandlingCompatibleWithZone(
+  zone: StorageZone,
+  handlingClass: HandlingClass,
+): boolean {
   return ALLOWED_HANDLING_BY_ZONE[zone].includes(handlingClass)
 }

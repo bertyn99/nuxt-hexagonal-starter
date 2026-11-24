@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest'
 import { $fetch, fetch, setup } from '@nuxt/test-utils/e2e'
 import type { InspectorSnapshotDto } from '../../modules/hexagonal-kernel/shared/types/inspector'
 import type { WarehouseBinDto } from '../../modules/warehouse/shared/types/warehouse'
-import type { ShipmentDto, ShipmentTimelineDto, SlaEvaluationDto } from '../../modules/delivery/shared/types/delivery'
+import type {
+  ShipmentDto,
+  ShipmentTimelineDto,
+  SlaEvaluationDto,
+} from '../../modules/delivery/shared/types/delivery'
 
 describe('End-to-End Logistics Flow (Real Nitro HTTP + SSR)', async () => {
   await setup({
@@ -60,24 +64,27 @@ describe('End-to-End Logistics Flow (Real Nitro HTTP + SSR)', async () => {
     expect(rejectedRes.status).toBe(409)
 
     // 3. Store valid FRAGILE parcel into AMBIENT bin
-    const stored = await $fetch<{ bin: WarehouseBinDto, storedCargoId: string }>('/api/warehouse/cargo', {
-      method: 'POST',
-      body: {
-        binId: ambientBin!.id,
-        kind: 'PARCEL',
-        sku: 'SKU-E2E-OPT',
-        label: 'E2E Optical Lidar Unit',
-        parcel: {
+    const stored = await $fetch<{ bin: WarehouseBinDto; storedCargoId: string }>(
+      '/api/warehouse/cargo',
+      {
+        method: 'POST',
+        body: {
+          binId: ambientBin!.id,
+          kind: 'PARCEL',
           sku: 'SKU-E2E-OPT',
           label: 'E2E Optical Lidar Unit',
-          weightKg: 12,
-          lengthCm: 50,
-          widthCm: 40,
-          heightCm: 30,
-          handlingClass: 'FRAGILE',
+          parcel: {
+            sku: 'SKU-E2E-OPT',
+            label: 'E2E Optical Lidar Unit',
+            weightKg: 12,
+            lengthCm: 50,
+            widthCm: 40,
+            heightCm: 30,
+            handlingClass: 'FRAGILE',
+          },
         },
       },
-    })
+    )
     expect(stored.storedCargoId).toBeTruthy()
 
     // 4. Create EXPRESS_AIR shipment allocating that cargo via Delivery -> Warehouse ACL
@@ -120,7 +127,9 @@ describe('End-to-End Logistics Flow (Real Nitro HTTP + SSR)', async () => {
     expect(slaResult.breachedTrackingNumbers).toContain(createdShipment.trackingNumber)
 
     // 9. Verify Shipment Timeline contains ShipmentCreated, ShipmentDispatched, DeliverySlaBreached
-    const timeline = await $fetch<ShipmentTimelineDto>(`/api/deliveries/${createdShipment.id}/timeline`)
+    const timeline = await $fetch<ShipmentTimelineDto>(
+      `/api/deliveries/${createdShipment.id}/timeline`,
+    )
     const eventNames = timeline.events.map(e => e.eventName)
     expect(eventNames).toContain('ShipmentCreated')
     expect(eventNames).toContain('ShipmentDispatched')
@@ -129,6 +138,8 @@ describe('End-to-End Logistics Flow (Real Nitro HTTP + SSR)', async () => {
     // 10. Verify Architecture Inspector captured live traces
     const inspector = await $fetch<InspectorSnapshotDto>('/api/_hexagonal/inspector')
     expect(inspector.traces.length).toBeGreaterThan(0)
-    expect(inspector.modules.map(m => m.name)).toEqual(expect.arrayContaining(['warehouse', 'delivery']))
+    expect(inspector.modules.map(m => m.name)).toEqual(
+      expect.arrayContaining(['warehouse', 'delivery']),
+    )
   })
 })

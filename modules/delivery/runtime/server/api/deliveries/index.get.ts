@@ -4,12 +4,14 @@ import { mapDomainErrorToHttp } from '../../../../../hexagonal-kernel/runtime/se
 import { carrierModeSchema, shipmentStateSchema } from '../../../../shared/schemas/delivery.schema'
 import { useDeliveryModule } from '../../utils/delivery-container'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const log = useLogger(event)
   try {
     const query = getQuery(event)
     const parsedState = query.state ? shipmentStateSchema.safeParse(String(query.state)) : null
-    const parsedCarrier = query.carrierMode ? carrierModeSchema.safeParse(String(query.carrierMode)) : null
+    const parsedCarrier = query.carrierMode
+      ? carrierModeSchema.safeParse(String(query.carrierMode))
+      : null
     const slaBreachedOnly = query.slaBreached === 'true'
 
     const filters = {
@@ -24,8 +26,7 @@ export default defineEventHandler(async (event) => {
 
     log.set({ delivery: { shipmentCount: shipments.length } })
     return shipments
-  }
-  catch (error: unknown) {
+  } catch (error: unknown) {
     mapDomainErrorToHttp(error, event)
   }
 })

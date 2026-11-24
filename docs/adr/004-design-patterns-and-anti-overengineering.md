@@ -1,15 +1,19 @@
 # ADR-004: Design Patterns Catalog & Anti-Overengineering Guardrails
 
 ## Status
+
 Accepted
 
 ## Context
+
 Architectural templates often suffer from "pattern bingo" — forcing every Gang of Four pattern into toy code where a simple function or union type would suffice.
 
 ## Decision
+
 We apply design patterns **only where concrete domain or architectural pressure justifies them**, and explicitly omit patterns without real pressure:
 
 ### Included Patterns (Justified by Domain Pressure)
+
 - **Factory Method:** `WarehouseBin.create` vs `rehydrate` and `Shipment.create` vs `rehydrate` enforce invariants on creation while reconstituting DB rows cleanly without spurious events.
 - **Abstract Factory:** `*PersistenceAdapterFactory` guarantees coherent repository families (`InMemory` vs `DrizzleSqlite`).
 - **Builder:** `WarehouseBinBuilder`, `ParcelBuilder`, and `ShipmentBuilder` in `test/helpers/` keep unit and contract tests concise and expressive.
@@ -24,6 +28,7 @@ We apply design patterns **only where concrete domain or architectural pressure 
 - **Command:** Single-purpose `UseCase<Input, Output>` classes enabling uniform decorator composition.
 
 ### Intentionally Omitted Patterns (Anti-Overengineering)
+
 - **Flyweight:** No high-cardinality identical immutable objects causing memory pressure.
 - **Visitor:** Domain hierarchies (`CargoUnit`, `ShipmentState`) are small and closed; polymorphism is clearer than double dispatch.
 - **Bridge:** Ports & Adapters already decouple abstraction from implementation.

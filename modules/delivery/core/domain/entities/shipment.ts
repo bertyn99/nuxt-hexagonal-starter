@@ -15,7 +15,10 @@ import {
 import { resolveCarrierStrategy } from '../policies/carrier-strategy'
 import type { CarrierMode } from '../policies/carrier-strategy'
 import { createDeliveryExceptionChain } from '../policies/delivery-exception-chain'
-import type { DeliveryExceptionHandler, DeliveryExceptionResolution } from '../policies/delivery-exception-chain'
+import type {
+  DeliveryExceptionHandler,
+  DeliveryExceptionResolution,
+} from '../policies/delivery-exception-chain'
 import { createShipmentState } from '../states/shipment-state'
 import type { ShipmentState, ShipmentStateName } from '../states/shipment-state'
 import { DeliveryWindow } from '../value-objects/delivery-window'
@@ -126,7 +129,10 @@ export class Shipment extends AggregateRoot<string> {
   }): Shipment {
     const destination = params.destination.trim()
     if (destination.length < 3) {
-      throw new ValidationDomainError('INVALID_DESTINATION', 'Destination must be at least 3 characters.')
+      throw new ValidationDomainError(
+        'INVALID_DESTINATION',
+        'Destination must be at least 3 characters.',
+      )
     }
 
     const handlingClass = assertHandlingClass(params.cargoSummary.handlingClass)
@@ -160,18 +166,20 @@ export class Shipment extends AggregateRoot<string> {
       updatedAtIso: nowIso,
     })
 
-    shipment.recordEvent(createShipmentCreatedEvent({
-      shipmentId: shipment.id,
-      trackingNumber: shipment.trackingNumber.value,
-      originBinId: shipment.originBinId,
-      cargoId: shipment.cargoSummary.cargoId,
-      destination: shipment.destination,
-      carrierMode: shipment.carrierMode,
-      quotedCostCents: shipment.quotedCost.amountCents,
-      currency: shipment.quotedCost.currency,
-      promisedBy: shipment.deliveryWindow.promisedByIso,
-      occurredAt: params.now,
-    }))
+    shipment.recordEvent(
+      createShipmentCreatedEvent({
+        shipmentId: shipment.id,
+        trackingNumber: shipment.trackingNumber.value,
+        originBinId: shipment.originBinId,
+        cargoId: shipment.cargoSummary.cargoId,
+        destination: shipment.destination,
+        carrierMode: shipment.carrierMode,
+        quotedCostCents: shipment.quotedCost.amountCents,
+        currency: shipment.quotedCost.currency,
+        promisedBy: shipment.deliveryWindow.promisedByIso,
+        occurredAt: params.now,
+      }),
+    )
 
     return shipment
   }
@@ -237,13 +245,15 @@ export class Shipment extends AggregateRoot<string> {
     this._carrierReference = carrierReference
     this._updatedAtIso = now.toISOString()
 
-    this.recordEvent(createShipmentDispatchedEvent({
-      shipmentId: this.id,
-      trackingNumber: this.trackingNumber.value,
-      carrierMode: this.carrierMode,
-      carrierReference,
-      occurredAt: now,
-    }))
+    this.recordEvent(
+      createShipmentDispatchedEvent({
+        shipmentId: this.id,
+        trackingNumber: this.trackingNumber.value,
+        carrierMode: this.carrierMode,
+        carrierReference,
+        occurredAt: now,
+      }),
+    )
   }
 
   advanceTransit(now: Date, locationNote?: string): ShipmentStateName {
@@ -252,14 +262,16 @@ export class Shipment extends AggregateRoot<string> {
     this._state = next
     this._updatedAtIso = now.toISOString()
 
-    this.recordEvent(createShipmentTransitAdvancedEvent({
-      shipmentId: this.id,
-      trackingNumber: this.trackingNumber.value,
-      previousState: previous,
-      nextState: next.name,
-      locationNote,
-      occurredAt: now,
-    }))
+    this.recordEvent(
+      createShipmentTransitAdvancedEvent({
+        shipmentId: this.id,
+        trackingNumber: this.trackingNumber.value,
+        previousState: previous,
+        nextState: next.name,
+        locationNote,
+        occurredAt: now,
+      }),
+    )
 
     return next.name
   }
@@ -269,12 +281,14 @@ export class Shipment extends AggregateRoot<string> {
     this._state = next
     this._updatedAtIso = now.toISOString()
 
-    this.recordEvent(createShipmentDeliveredEvent({
-      shipmentId: this.id,
-      trackingNumber: this.trackingNumber.value,
-      recipientNote,
-      occurredAt: now,
-    }))
+    this.recordEvent(
+      createShipmentDeliveredEvent({
+        shipmentId: this.id,
+        trackingNumber: this.trackingNumber.value,
+        recipientNote,
+        occurredAt: now,
+      }),
+    )
   }
 
   recordFailedAttempt(reason: string, now: Date): DeliveryExceptionResolution {
@@ -295,24 +309,28 @@ export class Shipment extends AggregateRoot<string> {
     this._state = nextState
     this._updatedAtIso = now.toISOString()
 
-    this.recordEvent(createDeliveryAttemptFailedEvent({
-      shipmentId: this.id,
-      trackingNumber: this.trackingNumber.value,
-      attemptNumber: nextAttempt,
-      reason: cleanReason,
-      resolutionAction: resolution.action,
-      occurredAt: now,
-    }))
-
-    if (resolution.shouldReturnToWarehouse) {
-      this.recordEvent(createShipmentReturnedToWarehouseEvent({
+    this.recordEvent(
+      createDeliveryAttemptFailedEvent({
         shipmentId: this.id,
         trackingNumber: this.trackingNumber.value,
-        originBinId: this.originBinId,
-        cargoId: this.cargoSummary.cargoId,
-        reason: resolution.note,
+        attemptNumber: nextAttempt,
+        reason: cleanReason,
+        resolutionAction: resolution.action,
         occurredAt: now,
-      }))
+      }),
+    )
+
+    if (resolution.shouldReturnToWarehouse) {
+      this.recordEvent(
+        createShipmentReturnedToWarehouseEvent({
+          shipmentId: this.id,
+          trackingNumber: this.trackingNumber.value,
+          originBinId: this.originBinId,
+          cargoId: this.cargoSummary.cargoId,
+          reason: resolution.note,
+          occurredAt: now,
+        }),
+      )
     }
 
     return resolution
@@ -323,14 +341,16 @@ export class Shipment extends AggregateRoot<string> {
     this._state = next
     this._updatedAtIso = now.toISOString()
 
-    this.recordEvent(createShipmentCancelledEvent({
-      shipmentId: this.id,
-      trackingNumber: this.trackingNumber.value,
-      originBinId: this.originBinId,
-      cargoId: this.cargoSummary.cargoId,
-      reason: reason.trim() || 'Cancelled by dispatcher',
-      occurredAt: now,
-    }))
+    this.recordEvent(
+      createShipmentCancelledEvent({
+        shipmentId: this.id,
+        trackingNumber: this.trackingNumber.value,
+        originBinId: this.originBinId,
+        cargoId: this.cargoSummary.cargoId,
+        reason: reason.trim() || 'Cancelled by dispatcher',
+        occurredAt: now,
+      }),
+    )
   }
 
   evaluateSla(now: Date): boolean {
@@ -348,14 +368,16 @@ export class Shipment extends AggregateRoot<string> {
     this._updatedAtIso = now.toISOString()
     const overdueHours = Math.abs(this.deliveryWindow.remainingHours(now))
 
-    this.recordEvent(createDeliverySlaBreachedEvent({
-      shipmentId: this.id,
-      trackingNumber: this.trackingNumber.value,
-      promisedBy: this.deliveryWindow.promisedByIso,
-      detectedAt: now.toISOString(),
-      overdueHours,
-      occurredAt: now,
-    }))
+    this.recordEvent(
+      createDeliverySlaBreachedEvent({
+        shipmentId: this.id,
+        trackingNumber: this.trackingNumber.value,
+        promisedBy: this.deliveryWindow.promisedByIso,
+        detectedAt: now.toISOString(),
+        overdueHours,
+        occurredAt: now,
+      }),
+    )
 
     return true
   }

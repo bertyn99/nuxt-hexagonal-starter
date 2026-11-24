@@ -1,4 +1,9 @@
-export type DomainErrorStatusHint = 'validation' | 'not_found' | 'conflict' | 'forbidden' | 'unavailable'
+export type DomainErrorStatusHint =
+  | 'validation'
+  | 'not_found'
+  | 'conflict'
+  | 'forbidden'
+  | 'unavailable'
 
 export abstract class DomainError extends Error {
   abstract readonly code: string
@@ -22,9 +27,9 @@ export class ValidationDomainError extends DomainError {
   }
 }
 
-export type Result<T, E extends DomainError = DomainError>
-  = | { readonly ok: true, readonly value: T }
-    | { readonly ok: false, readonly error: E }
+export type Result<T, E extends DomainError = DomainError> =
+  | { readonly ok: true; readonly value: T }
+  | { readonly ok: false; readonly error: E }
 
 export function ok<T>(value: T): Result<T, never> {
   return { ok: true, value }

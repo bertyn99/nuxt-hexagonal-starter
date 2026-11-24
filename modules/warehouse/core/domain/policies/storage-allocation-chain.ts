@@ -1,7 +1,4 @@
-import {
-  BinCapacityExceededError,
-  IncompatibleStorageZoneError,
-} from '../errors/warehouse.errors'
+import { BinCapacityExceededError, IncompatibleStorageZoneError } from '../errors/warehouse.errors'
 import type { CargoUnit } from '../entities/cargo-unit'
 import { isHandlingCompatibleWithZone } from '../value-objects/storage-zone'
 import type { StorageZone } from '../value-objects/storage-zone'

@@ -95,8 +95,7 @@ export function getRequestLogger(event?: H3Event): AuditableLogger | null {
   }
   try {
     return useLogger(event)
-  }
-  catch {
+  } catch {
     return null
   }
 }

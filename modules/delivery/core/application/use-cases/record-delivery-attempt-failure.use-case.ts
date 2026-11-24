@@ -17,8 +17,10 @@ export interface RecordDeliveryAttemptFailureOutput {
   readonly resolution: DeliveryExceptionResolution
 }
 
-export class RecordDeliveryAttemptFailureUseCase
-implements UseCase<RecordDeliveryAttemptFailureInput, RecordDeliveryAttemptFailureOutput> {
+export class RecordDeliveryAttemptFailureUseCase implements UseCase<
+  RecordDeliveryAttemptFailureInput,
+  RecordDeliveryAttemptFailureOutput
+> {
   readonly name = 'RecordDeliveryAttemptFailureUseCase'
   readonly boundedContext = 'delivery'
 
@@ -28,7 +30,9 @@ implements UseCase<RecordDeliveryAttemptFailureInput, RecordDeliveryAttemptFailu
     private readonly clock: ClockPort,
   ) {}
 
-  async execute(input: RecordDeliveryAttemptFailureInput): Promise<RecordDeliveryAttemptFailureOutput> {
+  async execute(
+    input: RecordDeliveryAttemptFailureInput,
+  ): Promise<RecordDeliveryAttemptFailureOutput> {
     const shipment = await this.shipmentRepository.findById(input.shipmentId)
     if (!shipment) {
       throw new ShipmentNotFoundError(input.shipmentId)

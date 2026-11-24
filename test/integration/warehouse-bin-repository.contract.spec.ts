@@ -9,7 +9,7 @@ import { createSamplePallet, ParcelBuilder, WarehouseBinBuilder } from '../helpe
 
 interface RepositoryHarness {
   name: string
-  create(): { repo: WarehouseBinRepositoryPort, teardown: () => void }
+  create(): { repo: WarehouseBinRepositoryPort; teardown: () => void }
 }
 
 const harnesses: RepositoryHarness[] = [
@@ -30,7 +30,7 @@ const harnesses: RepositoryHarness[] = [
   },
 ]
 
-describe.each(harnesses)('WarehouseBinRepositoryPort Conformance Contract — $name', (harness) => {
+describe.each(harnesses)('WarehouseBinRepositoryPort Conformance Contract — $name', harness => {
   let teardown: (() => void) | null = null
 
   afterEach(() => {

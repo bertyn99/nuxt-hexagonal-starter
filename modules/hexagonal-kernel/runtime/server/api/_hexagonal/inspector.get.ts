@@ -3,7 +3,7 @@ import { defineEventHandler } from 'h3'
 import { useHexagonalKernel } from '../../utils/hexagonal-kernel'
 import { mapDomainErrorToHttp } from '../../utils/http-error-mapper'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const log = useLogger(event)
   try {
     const kernel = useHexagonalKernel()
@@ -16,8 +16,7 @@ export default defineEventHandler(async (event) => {
       },
     })
     return snapshot
-  }
-  catch (error: unknown) {
+  } catch (error: unknown) {
     mapDomainErrorToHttp(error, event)
   }
 })

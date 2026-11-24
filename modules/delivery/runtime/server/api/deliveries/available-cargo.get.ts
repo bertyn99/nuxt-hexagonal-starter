@@ -3,7 +3,7 @@ import { defineEventHandler } from 'h3'
 import { mapDomainErrorToHttp } from '../../../../../hexagonal-kernel/runtime/server/utils/http-error-mapper'
 import { useDeliveryModule } from '../../utils/delivery-container'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const log = useLogger(event)
   try {
     log.set({ delivery: { action: 'list_available_cargo' } })
@@ -13,8 +13,7 @@ export default defineEventHandler(async (event) => {
 
     log.set({ delivery: { availableCargoCount: cargo.length } })
     return cargo
-  }
-  catch (error: unknown) {
+  } catch (error: unknown) {
     mapDomainErrorToHttp(error, event)
   }
 })

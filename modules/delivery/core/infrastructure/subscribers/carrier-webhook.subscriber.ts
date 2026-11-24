@@ -13,9 +13,14 @@ export function registerCarrierWebhookSubscriber(
   eventBus: EventBusPort,
   sink: CarrierWebhookDeliveryLog[] = [],
 ): () => void {
-  const watched = ['ShipmentDispatched', 'DeliverySlaBreached', 'ShipmentDelivered', 'ShipmentReturnedToWarehouse']
+  const watched = [
+    'ShipmentDispatched',
+    'DeliverySlaBreached',
+    'ShipmentDelivered',
+    'ShipmentReturnedToWarehouse',
+  ]
   const unsubs = watched.map(eventName =>
-    eventBus.subscribe(eventName, (event) => {
+    eventBus.subscribe(eventName, event => {
       sink.push({
         eventName: event.eventName,
         trackingNumber: String(event.payload.trackingNumber ?? event.aggregateId),

@@ -200,8 +200,16 @@ export class ShipmentBuilder {
 }
 
 export function createSamplePallet(id = nextId('plt')): Pallet {
-  const leaf1 = new ParcelBuilder().withWeightKg(20).withDimensionsCm(60, 50, 40).withHandlingClass('STANDARD').build()
-  const leaf2 = new ParcelBuilder().withWeightKg(15).withDimensionsCm(50, 40, 30).withHandlingClass('HAZMAT').build()
+  const leaf1 = new ParcelBuilder()
+    .withWeightKg(20)
+    .withDimensionsCm(60, 50, 40)
+    .withHandlingClass('STANDARD')
+    .build()
+  const leaf2 = new ParcelBuilder()
+    .withWeightKg(15)
+    .withDimensionsCm(50, 40, 30)
+    .withHandlingClass('HAZMAT')
+    .build()
   return Pallet.create({
     id,
     sku: 'PLT-SAMPLE-01',

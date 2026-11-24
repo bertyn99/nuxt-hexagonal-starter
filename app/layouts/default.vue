@@ -2,50 +2,36 @@
 import type { NavigationMenuItem } from '@nuxt/ui'
 
 const router = useRouter()
-const { open: openInspector, advanceClock, evaluateSlas } = useHexInspector()
-const { bins, fetchAll: fetchWarehouse } = useWarehouse()
-const { shipments, fetchShipments } = useDeliveries()
+const { isOpen: isInspectorOpen, snapshot, open: openInspector, advanceClock, evaluateSlas } = useHexInspector()
+const { bins, ensureBinsLoaded } = useWarehouse()
+const { shipments, ensureShipmentsLoaded } = useDeliveries()
 
-onMounted(() => {
-  if (bins.value.length === 0) {
-    fetchWarehouse().catch((err: unknown) => {
-      const parsed = parseError(err)
-      log.error({
-        action: 'bootstrap_warehouse_failed',
-        status: parsed.status,
-        message: parsed.message,
-        why: parsed.why,
-      })
-    })
+const searchOpen = shallowRef(false)
+
+watch(searchOpen, (isOpen) => {
+  if (!isOpen) {
+    return
   }
-  if (shipments.value.length === 0) {
-    fetchShipments().catch((err: unknown) => {
-      const parsed = parseError(err)
-      log.error({
-        action: 'bootstrap_deliveries_failed',
-        status: parsed.status,
-        message: parsed.message,
-        why: parsed.why,
-      })
-    })
-  }
+  Promise.all([ensureBinsLoaded(), ensureShipmentsLoaded()]).catch(() => {
+    // Error details are logged centrally by $api's onResponseError hook
+  })
 })
 
 const navItems: NavigationMenuItem[][] = [
   [
     {
-      label: 'Operations Overview',
+      label: 'Overview',
       icon: 'i-lucide-layout-dashboard',
       to: '/',
     },
     {
-      label: 'Warehouse Storage',
+      label: 'Warehouse',
       icon: 'i-lucide-warehouse',
       to: '/warehouse',
       badge: 'WMS',
     },
     {
-      label: 'Delivery & Dispatch',
+      label: 'Deliveries',
       icon: 'i-lucide-truck',
       to: '/deliveries',
       badge: 'TMS',
@@ -53,7 +39,7 @@ const navItems: NavigationMenuItem[][] = [
   ],
   [
     {
-      label: 'Architecture Inspector',
+      label: 'Inspector',
       icon: 'i-lucide-microscope',
       onSelect: () => openInspector(),
     },
@@ -134,16 +120,11 @@ const searchGroups = computed(() => [
         icon: 'i-lucide-radar',
         onSelect: async () => {
           await evaluateSlas()
-          await fetchShipments()
         },
       },
     ],
   },
 ])
-
-async function onSlasEvaluated() {
-  await Promise.all([fetchShipments(), fetchWarehouse()])
-}
 </script>
 
 <template>
@@ -156,15 +137,15 @@ async function onSlasEvaluated() {
     >
       <template #header="{ collapsed }">
         <NuxtLink to="/" class="flex items-center gap-2.5 px-1 py-1">
-          <div class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-inverted">
-            <UIcon name="i-lucide-hexagon" class="size-5" />
+          <div class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-inverted shadow-xs">
+            <UIcon name="i-lucide-hexagon" class="size-4.5" />
           </div>
           <div v-if="!collapsed" class="min-w-0">
-            <p class="truncate text-sm font-bold tracking-tight text-highlighted">
+            <p class="truncate text-sm font-semibold tracking-tight text-highlighted">
               HexLogix
             </p>
             <p class="truncate text-[11px] text-muted">
-              Nuxt 4 Modular Monolith
+              WMS + TMS Telemetry
             </p>
           </div>
         </NuxtLink>
@@ -191,17 +172,40 @@ async function onSlasEvaluated() {
       <template #footer="{ collapsed }">
         <div class="flex items-center justify-between gap-2 w-full">
           <UColorModeButton size="xs" />
-          <UBadge v-if="!collapsed" color="primary" variant="subtle" size="xs">
-            Ports & Adapters
-          </UBadge>
+          <div v-if="!collapsed" class="flex items-center gap-1.5 min-w-0">
+            <UBadge
+              v-if="snapshot?.faults.outageEnabled"
+              color="error"
+              variant="soft"
+              size="xs"
+            >
+              Carrier Outage
+            </UBadge>
+            <UBadge
+              v-else-if="(snapshot?.clock.offsetHours ?? 0) > 0"
+              color="warning"
+              variant="soft"
+              size="xs"
+            >
+              +{{ snapshot?.clock.offsetHours }}h Clock
+            </UBadge>
+            <UBadge
+              v-else
+              color="neutral"
+              variant="subtle"
+              size="xs"
+            >
+              Ports & Adapters
+            </UBadge>
+          </div>
         </div>
       </template>
     </UDashboardSidebar>
 
-    <UDashboardSearch :groups="searchGroups" />
+    <UDashboardSearch v-model:open="searchOpen" :groups="searchGroups" />
 
     <slot />
 
-    <HexInspectorDrawer @slas-evaluated="onSlasEvaluated" />
+    <LazyHexInspectorDrawer v-if="isInspectorOpen" />
   </UDashboardGroup>
 </template>

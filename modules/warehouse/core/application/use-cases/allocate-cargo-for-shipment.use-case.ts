@@ -23,8 +23,10 @@ export interface AllocateCargoForShipmentOutput {
   readonly itemCount: number
 }
 
-export class AllocateCargoForShipmentUseCase
-implements UseCase<AllocateCargoForShipmentInput, AllocateCargoForShipmentOutput> {
+export class AllocateCargoForShipmentUseCase implements UseCase<
+  AllocateCargoForShipmentInput,
+  AllocateCargoForShipmentOutput
+> {
   readonly name = 'AllocateCargoForShipmentUseCase'
   readonly boundedContext = 'warehouse'
 

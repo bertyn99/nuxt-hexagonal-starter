@@ -14,7 +14,5 @@
     "declarationDir": ".nuxt/domain-types",
     "rootDir": "modules"
   },
-  "include": [
-    "modules/*/core/domain/**/*.ts"
-  ]
+  "include": ["modules/*/core/domain/**/*.ts"]
 }

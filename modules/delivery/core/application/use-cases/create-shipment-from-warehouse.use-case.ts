@@ -22,8 +22,10 @@ function nextShipmentId(): string {
   return `shp_${Date.now().toString(36)}_${shipmentSeq.toString(36)}`
 }
 
-export class CreateShipmentFromWarehouseUseCase
-implements UseCase<CreateShipmentFromWarehouseInput, ShipmentView> {
+export class CreateShipmentFromWarehouseUseCase implements UseCase<
+  CreateShipmentFromWarehouseInput,
+  ShipmentView
+> {
   readonly name = 'CreateShipmentFromWarehouseUseCase'
   readonly boundedContext = 'delivery'
 

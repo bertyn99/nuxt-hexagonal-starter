@@ -60,10 +60,7 @@ export class DrizzleSqliteWarehouseBinRepository implements WarehouseBinReposito
   }
 
   async findByCargoId(cargoId: string): Promise<WarehouseBin | null> {
-    const rows = this.driver.db
-      .select()
-      .from(warehouseBinsTable)
-      .all()
+    const rows = this.driver.db.select().from(warehouseBinsTable).all()
 
     for (const row of rows) {
       if (row.storedEntriesJson.includes(cargoId)) {
@@ -86,10 +83,7 @@ export class DrizzleSqliteWarehouseBinRepository implements WarehouseBinReposito
           .from(warehouseBinsTable)
           .where(eq(warehouseBinsTable.zone, filter.zone))
           .orderBy(asc(warehouseBinsTable.code))
-      : this.driver.db
-          .select()
-          .from(warehouseBinsTable)
-          .orderBy(asc(warehouseBinsTable.code))
+      : this.driver.db.select().from(warehouseBinsTable).orderBy(asc(warehouseBinsTable.code))
 
     return query.all().map(row =>
       fromWarehouseBinRecord({
@@ -118,9 +112,6 @@ export class DrizzleSqliteWarehouseBinRepository implements WarehouseBinReposito
   }
 
   async delete(binId: string): Promise<void> {
-    this.driver.db
-      .delete(warehouseBinsTable)
-      .where(eq(warehouseBinsTable.id, binId))
-      .run()
+    this.driver.db.delete(warehouseBinsTable).where(eq(warehouseBinsTable.id, binId)).run()
   }
 }

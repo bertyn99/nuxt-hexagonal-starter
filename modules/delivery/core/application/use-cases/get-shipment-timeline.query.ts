@@ -10,7 +10,10 @@ export interface GetShipmentTimelineInput {
   readonly shipmentId: string
 }
 
-export class GetShipmentTimelineQuery implements UseCase<GetShipmentTimelineInput, ShipmentTimelineView> {
+export class GetShipmentTimelineQuery implements UseCase<
+  GetShipmentTimelineInput,
+  ShipmentTimelineView
+> {
   readonly name = 'GetShipmentTimelineQuery'
   readonly boundedContext = 'delivery'
 

@@ -94,7 +94,10 @@ export class Parcel implements CargoUnit {
       throw new ValidationDomainError('INVALID_CARGO_LABEL', 'Parcel label cannot be empty.')
     }
     if (params.weight.grams <= 0) {
-      throw new ValidationDomainError('INVALID_PARCEL_WEIGHT', 'Parcel weight must be greater than zero.')
+      throw new ValidationDomainError(
+        'INVALID_PARCEL_WEIGHT',
+        'Parcel weight must be greater than zero.',
+      )
     }
     return new Parcel({
       ...params,
@@ -178,7 +181,10 @@ export class Pallet implements CargoUnit {
       throw new ValidationDomainError('INVALID_CARGO_LABEL', 'Pallet label cannot be empty.')
     }
     if (params.children.length === 0) {
-      throw new ValidationDomainError('EMPTY_PALLET', 'Pallet must contain at least one cargo unit.')
+      throw new ValidationDomainError(
+        'EMPTY_PALLET',
+        'Pallet must contain at least one cargo unit.',
+      )
     }
     return new Pallet({
       id: params.id.trim(),
@@ -194,17 +200,11 @@ export class Pallet implements CargoUnit {
   }
 
   getWeight(): Weight {
-    return this.children.reduce(
-      (total, child) => total.add(child.getWeight()),
-      this.tareWeight,
-    )
+    return this.children.reduce((total, child) => total.add(child.getWeight()), this.tareWeight)
   }
 
   getVolume(): Volume {
-    return this.children.reduce(
-      (total, child) => total.add(child.getVolume()),
-      Volume.zero(),
-    )
+    return this.children.reduce((total, child) => total.add(child.getVolume()), Volume.zero())
   }
 
   getHandlingClass(): HandlingClass {

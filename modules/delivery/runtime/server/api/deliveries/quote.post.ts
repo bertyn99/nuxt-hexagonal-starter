@@ -7,7 +7,7 @@ import {
 import { quoteShipmentRequestSchema } from '../../../../shared/schemas/delivery.schema'
 import { useDeliveryModule } from '../../utils/delivery-container'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const log = useLogger(event)
   try {
     const payload = await parseBodyWithSchema(event, quoteShipmentRequestSchema)
@@ -30,8 +30,7 @@ export default defineEventHandler(async (event) => {
       },
     })
     return quote
-  }
-  catch (error: unknown) {
+  } catch (error: unknown) {
     mapDomainErrorToHttp(error, event)
   }
 })

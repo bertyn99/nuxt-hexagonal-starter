@@ -9,7 +9,7 @@ import { ShipmentBuilder } from '../helpers/builders'
 
 interface RepositoryHarness {
   name: string
-  create(): { repo: ShipmentRepositoryPort, teardown: () => void }
+  create(): { repo: ShipmentRepositoryPort; teardown: () => void }
 }
 
 const harnesses: RepositoryHarness[] = [
@@ -30,7 +30,7 @@ const harnesses: RepositoryHarness[] = [
   },
 ]
 
-describe.each(harnesses)('ShipmentRepositoryPort Conformance Contract — $name', (harness) => {
+describe.each(harnesses)('ShipmentRepositoryPort Conformance Contract — $name', harness => {
   let teardown: (() => void) | null = null
 
   afterEach(() => {

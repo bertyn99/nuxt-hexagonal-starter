@@ -18,14 +18,12 @@ export class GetWarehouseUtilizationQuery implements UseCase<void, WarehouseUtil
     let binsNearCapacity = 0
     let sumUtilization = 0
 
-    const byZone: ZoneUtilizationView[] = STORAGE_ZONES.map((zone) => {
+    const byZone: ZoneUtilizationView[] = STORAGE_ZONES.map(zone => {
       const zoneBins = bins.filter(bin => bin.zone === zone)
       const usedWeightKg = Number(
         zoneBins.reduce((s, b) => s + b.usedWeight.kilograms, 0).toFixed(2),
       )
-      const maxWeightKg = Number(
-        zoneBins.reduce((s, b) => s + b.maxWeight.kilograms, 0).toFixed(2),
-      )
+      const maxWeightKg = Number(zoneBins.reduce((s, b) => s + b.maxWeight.kilograms, 0).toFixed(2))
       const usedVolumeM3 = Number(
         zoneBins.reduce((s, b) => s + b.usedVolume.cubicMeters, 0).toFixed(3),
       )
@@ -49,8 +47,7 @@ export class GetWarehouseUtilizationQuery implements UseCase<void, WarehouseUtil
           if (entry.status === 'AVAILABLE') {
             availableCargoUnits += 1
             zoneAvailable += 1
-          }
-          else {
+          } else {
             allocatedCargoUnits += 1
             zoneAllocated += 1
           }
@@ -70,9 +67,7 @@ export class GetWarehouseUtilizationQuery implements UseCase<void, WarehouseUtil
       }
     })
 
-    const overallUtilizationPercent = bins.length > 0
-      ? Math.round(sumUtilization / bins.length)
-      : 0
+    const overallUtilizationPercent = bins.length > 0 ? Math.round(sumUtilization / bins.length) : 0
 
     return {
       totalBins: bins.length,

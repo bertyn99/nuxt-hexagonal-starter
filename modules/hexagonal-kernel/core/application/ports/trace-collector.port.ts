@@ -1,4 +1,9 @@
-export type HexagonalLayer = 'driving-adapter' | 'application' | 'domain' | 'driven-adapter' | 'event-bus'
+export type HexagonalLayer =
+  | 'driving-adapter'
+  | 'application'
+  | 'domain'
+  | 'driven-adapter'
+  | 'event-bus'
 
 export interface TraceStep {
   readonly layer: HexagonalLayer

@@ -27,7 +27,7 @@ export default defineNuxtModule({
     addImportsDir(resolve('./runtime/app/composables'))
 
     // 4. Register module-owned /warehouse page
-    extendPages((pages) => {
+    extendPages(pages => {
       pages.push({
         name: 'warehouse',
         path: '/warehouse',

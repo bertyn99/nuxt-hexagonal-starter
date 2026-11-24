@@ -7,7 +7,7 @@ import {
 import { advanceTransitRequestSchema } from '../../../../../shared/schemas/delivery.schema'
 import { useDeliveryModule } from '../../../utils/delivery-container'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const log = useLogger(event)
   try {
     const shipmentId = requireRouterParam(event, 'id', 'shipment id')
@@ -30,8 +30,7 @@ export default defineEventHandler(async (event) => {
       },
     })
     return updated
-  }
-  catch (error: unknown) {
+  } catch (error: unknown) {
     mapDomainErrorToHttp(error, event)
   }
 })

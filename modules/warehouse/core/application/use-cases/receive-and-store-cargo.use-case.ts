@@ -2,13 +2,7 @@ import type { HandlingClass } from '../../../../hexagonal-kernel/core/domain/han
 import type { ClockPort } from '../../../../hexagonal-kernel/core/application/ports/clock.port'
 import type { EventBusPort } from '../../../../hexagonal-kernel/core/application/ports/event-bus.port'
 import type { UseCase } from '../../../../hexagonal-kernel/core/application/use-case'
-import {
-  Dimensions,
-  Pallet,
-  Parcel,
-  WarehouseBinNotFoundError,
-  Weight,
-} from '../../domain'
+import { Dimensions, Pallet, Parcel, WarehouseBinNotFoundError, Weight } from '../../domain'
 import type { CargoUnit } from '../../domain'
 import { mapWarehouseBinToView } from '../dtos/warehouse.dtos'
 import type { WarehouseBinView } from '../dtos/warehouse.dtos'
@@ -48,8 +42,10 @@ function nextCargoId(prefix: 'prc' | 'plt'): string {
   return `${prefix}_${Date.now().toString(36)}_${cargoSeq.toString(36).padStart(3, '0')}`
 }
 
-export class ReceiveAndStoreCargoUseCase
-implements UseCase<ReceiveAndStoreCargoInput, ReceiveAndStoreCargoOutput> {
+export class ReceiveAndStoreCargoUseCase implements UseCase<
+  ReceiveAndStoreCargoInput,
+  ReceiveAndStoreCargoOutput
+> {
   readonly name = 'ReceiveAndStoreCargoUseCase'
   readonly boundedContext = 'warehouse'
 
@@ -76,8 +72,7 @@ implements UseCase<ReceiveAndStoreCargoInput, ReceiveAndStoreCargoOutput> {
         dimensions: Dimensions.fromCentimeters(p.lengthCm, p.widthCm, p.heightCm),
         handlingClass: p.handlingClass,
       })
-    }
-    else {
+    } else {
       const children = (input.items ?? []).map(item =>
         Parcel.create({
           id: item.id ?? nextCargoId('prc'),

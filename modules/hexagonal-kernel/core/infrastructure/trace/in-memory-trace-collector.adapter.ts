@@ -1,4 +1,7 @@
-import type { ExecutionTrace, TraceCollectorPort } from '../../application/ports/trace-collector.port'
+import type {
+  ExecutionTrace,
+  TraceCollectorPort,
+} from '../../application/ports/trace-collector.port'
 
 export class InMemoryTraceCollectorAdapter implements TraceCollectorPort {
   private readonly traces: ExecutionTrace[] = []

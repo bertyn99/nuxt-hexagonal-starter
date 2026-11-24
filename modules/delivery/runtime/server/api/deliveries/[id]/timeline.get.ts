@@ -6,7 +6,7 @@ import {
 } from '../../../../../../hexagonal-kernel/runtime/server/utils/http-error-mapper'
 import { useDeliveryModule } from '../../../utils/delivery-container'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const log = useLogger(event)
   try {
     const shipmentId = requireRouterParam(event, 'id', 'shipment id')
@@ -23,8 +23,7 @@ export default defineEventHandler(async (event) => {
       },
     })
     return timeline
-  }
-  catch (error: unknown) {
+  } catch (error: unknown) {
     mapDomainErrorToHttp(error, event)
   }
 })

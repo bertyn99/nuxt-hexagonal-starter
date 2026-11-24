@@ -16,14 +16,22 @@ export class Volume extends ValueObject<VolumeProps> {
 
   static fromCubicMeters(m3: number): Volume {
     if (!Number.isFinite(m3) || m3 < 0) {
-      throw new ValidationDomainError('INVALID_VOLUME', 'Volume in m3 must be a non-negative finite number.', { m3 })
+      throw new ValidationDomainError(
+        'INVALID_VOLUME',
+        'Volume in m3 must be a non-negative finite number.',
+        { m3 },
+      )
     }
     return new Volume(Math.round(m3 * 1_000_000))
   }
 
   static fromCubicCentimeters(cm3: number): Volume {
     if (!Number.isFinite(cm3) || cm3 < 0) {
-      throw new ValidationDomainError('INVALID_VOLUME', 'Volume in cm3 must be a non-negative finite number.', { cm3 })
+      throw new ValidationDomainError(
+        'INVALID_VOLUME',
+        'Volume in cm3 must be a non-negative finite number.',
+        { cm3 },
+      )
     }
     return new Volume(Math.round(cm3))
   }
@@ -43,7 +51,10 @@ export class Volume extends ValueObject<VolumeProps> {
   subtract(other: Volume): Volume {
     const diff = this.props.cubicCentimeters - other.props.cubicCentimeters
     if (diff < 0) {
-      throw new ValidationDomainError('NEGATIVE_VOLUME_RESULT', 'Resulting volume cannot be negative.')
+      throw new ValidationDomainError(
+        'NEGATIVE_VOLUME_RESULT',
+        'Resulting volume cannot be negative.',
+      )
     }
     return new Volume(diff)
   }
@@ -66,9 +77,12 @@ export class Dimensions extends ValueObject<DimensionsProps> {
 
   static fromCentimeters(lengthCm: number, widthCm: number, heightCm: number): Dimensions {
     if (
-      !Number.isFinite(lengthCm) || lengthCm <= 0
-      || !Number.isFinite(widthCm) || widthCm <= 0
-      || !Number.isFinite(heightCm) || heightCm <= 0
+      !Number.isFinite(lengthCm) ||
+      lengthCm <= 0 ||
+      !Number.isFinite(widthCm) ||
+      widthCm <= 0 ||
+      !Number.isFinite(heightCm) ||
+      heightCm <= 0
     ) {
       throw new ValidationDomainError(
         'INVALID_DIMENSIONS',

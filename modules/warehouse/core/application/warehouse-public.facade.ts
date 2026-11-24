@@ -31,7 +31,9 @@ export interface PublicAvailableCargoDto {
  */
 export interface WarehousePublicFacade {
   listAvailableCargo(): Promise<PublicAvailableCargoDto[]>
-  allocateCargoForShipment(input: AllocateCargoForShipmentInput): Promise<AllocateCargoForShipmentOutput>
+  allocateCargoForShipment(
+    input: AllocateCargoForShipmentInput,
+  ): Promise<AllocateCargoForShipmentOutput>
   returnCargoToWarehouse(input: ReturnCargoToWarehouseInput): Promise<ReturnCargoToWarehouseOutput>
 }
 

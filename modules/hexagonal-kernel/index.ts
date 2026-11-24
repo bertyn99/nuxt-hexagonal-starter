@@ -76,8 +76,7 @@ export default defineNuxtModule<HexagonalModuleOptions>({
             `Hexagonal architecture boundary check failed with ${violations.length} violation(s).`,
           )
         }
-      }
-      else {
+      } else {
         logger.info('Hexagonal & Modular Monolith boundaries verified (0 violations).')
       }
     }

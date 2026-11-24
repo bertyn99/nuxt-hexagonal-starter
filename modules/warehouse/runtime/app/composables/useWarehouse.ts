@@ -1,80 +1,93 @@
-import type {
-  StorageZoneDto,
-  WarehouseBinDto,
-  WarehouseUtilizationDto,
-} from '../../../shared/types/warehouse'
+import type { WarehouseBinDto, WarehouseUtilizationDto } from '../../../shared/types/warehouse'
 import type { ReceiveCargoRequest } from '../../../shared/schemas/warehouse.schema'
 
-function formatClientError(err: unknown, fallbackMessage: string) {
-  const parsed = parseError(err)
-  const code = parsed.code ?? (typeof parsed.data?.code === 'string' ? parsed.data.code : 'DOMAIN_RULE_VIOLATION')
-  const details = [parsed.why ?? parsed.message ?? fallbackMessage, parsed.fix ? `Fix: ${parsed.fix}` : null]
-    .filter(Boolean)
-    .join(' — ')
-  return { parsed, code, details }
+export function useWarehouseBins() {
+  return useAPI<WarehouseBinDto[]>('/api/warehouse/bins', {
+    key: API_CACHE_KEYS.warehouseBins,
+    default: () => [],
+  })
+}
+
+export function useWarehouseUtilization() {
+  return useAPI<WarehouseUtilizationDto | null>('/api/warehouse/utilization', {
+    key: API_CACHE_KEYS.warehouseUtilization,
+    default: () => null,
+  })
 }
 
 export function useWarehouse() {
+  const { $api } = useNuxtApp()
   const toast = useToast()
 
-  const bins = useState<WarehouseBinDto[]>('warehouse-bins', () => [])
-  const utilization = useState<WarehouseUtilizationDto | null>('warehouse-utilization', () => null)
-  const loading = useState<boolean>('warehouse-loading', () => false)
+  const { data: binsData } = useNuxtData<WarehouseBinDto[]>(API_CACHE_KEYS.warehouseBins)
+  const { data: utilizationData } = useNuxtData<WarehouseUtilizationDto | null>(
+    API_CACHE_KEYS.warehouseUtilization,
+  )
 
-  async function fetchAll(zone?: StorageZoneDto) {
-    loading.value = true
-    try {
-      const [binsRes, utilRes] = await Promise.all([
-        $fetch<WarehouseBinDto[]>('/api/warehouse/bins', {
-          query: zone ? { zone } : undefined,
-        }),
-        $fetch<WarehouseUtilizationDto>('/api/warehouse/utilization'),
-      ])
-      bins.value = binsRes
-      utilization.value = utilRes
+  const bins = computed<readonly WarehouseBinDto[]>(() => binsData.value ?? [])
+  const utilization = computed(() => utilizationData.value ?? null)
+
+  async function ensureBinsLoaded() {
+    if (binsData.value !== undefined) {
+      return
     }
-    finally {
-      loading.value = false
-    }
+    binsData.value = await $api<WarehouseBinDto[]>('/api/warehouse/bins')
   }
 
-  async function receiveCargo(payload: ReceiveCargoRequest) {
+  async function refreshAll() {
+    await refreshNuxtData([API_CACHE_KEYS.warehouseBins, API_CACHE_KEYS.warehouseUtilization])
+  }
+
+  async function invalidateAfterMutation() {
+    clearNuxtData([
+      API_CACHE_KEYS.deliveryAvailableCargo,
+      API_CACHE_KEYS.hexInspector,
+    ])
+    await refreshNuxtData([
+      API_CACHE_KEYS.warehouseBins,
+      API_CACHE_KEYS.warehouseUtilization,
+      API_CACHE_KEYS.deliveryAvailableCargo,
+      API_CACHE_KEYS.hexInspector,
+    ])
+  }
+
+  async function receiveCargo(
+    payload: ReceiveCargoRequest,
+    options?: { silentErrorToast?: boolean },
+  ) {
     try {
-      const res = await $fetch<{ bin: WarehouseBinDto, storedCargoId: string }>('/api/warehouse/cargo', {
-        method: 'POST',
-        body: payload,
-      })
+      const res = await $api<{ bin: WarehouseBinDto; storedCargoId: string }>(
+        '/api/warehouse/cargo',
+        {
+          method: 'POST',
+          body: payload,
+        },
+      )
       toast.add({
         title: `${payload.kind === 'PALLET' ? 'Composite Pallet' : 'Parcel'} stored in ${res.bin.code}`,
         description: `${payload.label} (${res.storedCargoId})`,
         color: 'success',
         icon: 'i-lucide-package-check',
       })
-      await fetchAll()
+      await invalidateAfterMutation()
       return res
-    }
-    catch (err: unknown) {
-      const { parsed, code, details } = formatClientError(err, 'Failed to store cargo')
-      log.error({
-        action: 'warehouse_receive_cargo_failed',
-        code,
-        status: parsed.status,
-        binId: payload.binId,
-        sku: payload.sku,
-      })
-      toast.add({
-        title: `Storage Rejected (${code})`,
-        description: details,
-        color: 'error',
-        icon: 'i-lucide-shield-alert',
-      })
+    } catch (err: unknown) {
+      if (!options?.silentErrorToast) {
+        const { code, details } = formatApiError(err, 'Failed to store cargo')
+        toast.add({
+          title: `Storage Rejected (${code})`,
+          description: details,
+          color: 'error',
+          icon: 'i-lucide-shield-alert',
+        })
+      }
       throw err
     }
   }
 
   async function releaseCargo(cargoId: string) {
     try {
-      const res = await $fetch<{ bin: WarehouseBinDto, releasedCargoId: string }>(
+      const res = await $api<{ bin: WarehouseBinDto; releasedCargoId: string }>(
         `/api/warehouse/cargo/${encodeURIComponent(cargoId)}/release`,
         { method: 'POST' },
       )
@@ -84,17 +97,10 @@ export function useWarehouse() {
         color: 'info',
         icon: 'i-lucide-package-minus',
       })
-      await fetchAll()
+      await invalidateAfterMutation()
       return res
-    }
-    catch (err: unknown) {
-      const { parsed, code, details } = formatClientError(err, 'Unable to release cargo')
-      log.error({
-        action: 'warehouse_release_cargo_failed',
-        code,
-        status: parsed.status,
-        cargoId,
-      })
+    } catch (err: unknown) {
+      const { code, details } = formatApiError(err, 'Unable to release cargo')
       toast.add({
         title: `Release failed (${code})`,
         description: details,
@@ -107,8 +113,8 @@ export function useWarehouse() {
   return {
     bins,
     utilization,
-    loading,
-    fetchAll,
+    ensureBinsLoaded,
+    refreshAll,
     receiveCargo,
     releaseCargo,
   }

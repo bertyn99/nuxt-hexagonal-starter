@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { InProcessEventBusAdapter, VirtualClockAdapter } from '../../modules/hexagonal-kernel/core/infrastructure'
+import {
+  InProcessEventBusAdapter,
+  VirtualClockAdapter,
+} from '../../modules/hexagonal-kernel/core/infrastructure'
 import {
   AllocateCargoForShipmentUseCase,
   ReceiveAndStoreCargoUseCase,
@@ -46,8 +49,12 @@ describe('Warehouse Bounded Context — Pure Domain & Use Cases', () => {
     const coldParcel = new ParcelBuilder().withHandlingClass('COLD_CHAIN').build()
     const hazmatPallet = createSamplePallet()
 
-    expect(() => ambientBin.storeCargo(coldParcel, fixedNow)).toThrowError(IncompatibleStorageZoneError)
-    expect(() => ambientBin.storeCargo(hazmatPallet, fixedNow)).toThrowError(IncompatibleStorageZoneError)
+    expect(() => ambientBin.storeCargo(coldParcel, fixedNow)).toThrowError(
+      IncompatibleStorageZoneError,
+    )
+    expect(() => ambientBin.storeCargo(hazmatPallet, fixedNow)).toThrowError(
+      IncompatibleStorageZoneError,
+    )
   })
 
   it('enforces weight and volume capacity limits on WarehouseBin', () => {
@@ -84,8 +91,12 @@ describe('Warehouse Bounded Context — Pure Domain & Use Cases', () => {
     const bin = new WarehouseBinBuilder().withCargo(parcel).build()
 
     bin.allocateCargo('cargo-alloc-1', 'shp-1', fixedNow)
-    expect(() => bin.allocateCargo('cargo-alloc-1', 'shp-2', fixedNow)).toThrowError(CargoAlreadyAllocatedError)
-    expect(() => bin.allocateCargo('missing-id', 'shp-2', fixedNow)).toThrowError(CargoNotFoundInBinError)
+    expect(() => bin.allocateCargo('cargo-alloc-1', 'shp-2', fixedNow)).toThrowError(
+      CargoAlreadyAllocatedError,
+    )
+    expect(() => bin.allocateCargo('missing-id', 'shp-2', fixedNow)).toThrowError(
+      CargoNotFoundInBinError,
+    )
   })
 
   it('executes ReceiveAndStoreCargoUseCase and AllocateCargoForShipmentUseCase with pure InMemory adapters', async () => {
@@ -93,7 +104,11 @@ describe('Warehouse Bounded Context — Pure Domain & Use Cases', () => {
     const eventBus = new InProcessEventBusAdapter()
     const clock = new VirtualClockAdapter(fixedNow)
 
-    const bin = new WarehouseBinBuilder().withId('bin-cold-1').withCode('BAY-C01').withZone('COLD_CHAIN').build()
+    const bin = new WarehouseBinBuilder()
+      .withId('bin-cold-1')
+      .withCode('BAY-C01')
+      .withZone('COLD_CHAIN')
+      .build()
     await repo.save(bin)
 
     const receiveUc = new ReceiveAndStoreCargoUseCase(repo, eventBus, clock)

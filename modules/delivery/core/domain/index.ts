@@ -21,7 +21,12 @@ export {
   ColdChainCourierStrategy,
   resolveCarrierStrategy,
 } from './policies/carrier-strategy'
-export type { CarrierMode, CarrierQuoteInput, CarrierQuoteResult, CarrierStrategy } from './policies/carrier-strategy'
+export type {
+  CarrierMode,
+  CarrierQuoteInput,
+  CarrierQuoteResult,
+  CarrierStrategy,
+} from './policies/carrier-strategy'
 export {
   FirstAttemptRetryHandler,
   SecondAttemptHubHoldHandler,

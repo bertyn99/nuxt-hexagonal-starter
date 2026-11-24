@@ -11,7 +11,10 @@ export interface AdvanceShipmentTransitInput {
   readonly locationNote?: string
 }
 
-export class AdvanceShipmentTransitUseCase implements UseCase<AdvanceShipmentTransitInput, ShipmentView> {
+export class AdvanceShipmentTransitUseCase implements UseCase<
+  AdvanceShipmentTransitInput,
+  ShipmentView
+> {
   readonly name = 'AdvanceShipmentTransitUseCase'
   readonly boundedContext = 'delivery'
 

@@ -1,0 +1,257 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "oxc", "import"],
+  "categories": {
+    "correctness": "error"
+  },
+  "env": {
+    "builtin": true,
+    "browser": true,
+    "es2024": true,
+    "node": true
+  },
+  "ignorePatterns": [
+    "**/.skilld",
+    "**/dist",
+    "**/node_modules",
+    "**/.nuxt",
+    "**/.output",
+    "**/.data",
+    "**/.vercel",
+    "**/.netlify",
+    "**/public"
+  ],
+  "rules": {
+    "constructor-super": "error",
+    "for-direction": "error",
+    "getter-return": "error",
+    "no-async-promise-executor": "error",
+    "no-case-declarations": "error",
+    "no-class-assign": "error",
+    "no-compare-neg-zero": "error",
+    "no-cond-assign": "error",
+    "no-const-assign": "error",
+    "no-constant-binary-expression": "error",
+    "no-constant-condition": "error",
+    "no-control-regex": "error",
+    "no-debugger": "error",
+    "no-delete-var": "error",
+    "no-dupe-class-members": "error",
+    "no-dupe-else-if": "error",
+    "no-dupe-keys": "error",
+    "no-duplicate-case": "error",
+    "no-empty": "error",
+    "no-empty-character-class": "error",
+    "no-empty-pattern": "error",
+    "no-empty-static-block": "error",
+    "no-ex-assign": "error",
+    "no-extra-boolean-cast": "error",
+    "no-fallthrough": "error",
+    "no-func-assign": "error",
+    "no-global-assign": "error",
+    "no-import-assign": "error",
+    "no-invalid-regexp": "error",
+    "no-irregular-whitespace": "error",
+    "no-loss-of-precision": "error",
+    "no-misleading-character-class": "error",
+    "no-new-native-nonconstructor": "error",
+    "no-nonoctal-decimal-escape": "error",
+    "no-obj-calls": "error",
+    "no-prototype-builtins": "error",
+    "no-redeclare": "error",
+    "no-regex-spaces": "error",
+    "no-self-assign": "error",
+    "no-setter-return": "error",
+    "no-shadow-restricted-names": "error",
+    "no-sparse-arrays": "error",
+    "no-this-before-super": "error",
+    "no-unassigned-vars": "error",
+    "no-unexpected-multiline": "error",
+    "no-unreachable": "error",
+    "no-unsafe-finally": "error",
+    "no-unsafe-negation": "error",
+    "no-unsafe-optional-chaining": "error",
+    "no-unused-labels": "error",
+    "no-unused-private-class-members": "error",
+    "no-unused-vars": "error",
+    "no-useless-backreference": "error",
+    "no-useless-catch": "error",
+    "no-useless-escape": "error",
+    "no-with": "error",
+    "preserve-caught-error": "error",
+    "require-yield": "error",
+    "use-isnan": "error",
+    "valid-typeof": "error",
+    "import/first": "error",
+    "import/no-duplicates": "error",
+    "import/no-mutable-exports": "error",
+    "import/no-named-default": "error"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.vue"],
+      "plugins": ["vue"],
+      "rules": {
+        "vue/no-arrow-functions-in-watch": "error",
+        "vue/no-async-in-computed-properties": "error",
+        "vue/no-computed-properties-in-data": "error",
+        "vue/no-deprecated-data-object-declaration": "error",
+        "vue/no-deprecated-delete-set": "error",
+        "vue/no-deprecated-destroyed-lifecycle": "error",
+        "vue/no-deprecated-events-api": "error",
+        "vue/no-deprecated-model-definition": "error",
+        "vue/no-deprecated-props-default-this": "error",
+        "vue/no-deprecated-vue-config-keycodes": "error",
+        "vue/no-dupe-keys": "error",
+        "vue/no-export-in-script-setup": "error",
+        "vue/no-expose-after-await": "error",
+        "vue/no-lifecycle-after-await": "error",
+        "vue/no-reserved-component-names": "error",
+        "vue/no-reserved-keys": "error",
+        "vue/no-reserved-props": "error",
+        "vue/no-shared-component-data": "error",
+        "vue/no-side-effects-in-computed-properties": "error",
+        "vue/no-watch-after-await": "error",
+        "vue/prefer-import-from-vue": "error",
+        "vue/require-prop-type-constructor": "error",
+        "vue/require-render-return": "error",
+        "vue/require-slots-as-functions": "error",
+        "vue/return-in-computed-property": "error",
+        "vue/return-in-emits-validator": "error",
+        "vue/valid-define-emits": "error",
+        "vue/valid-define-options": "error",
+        "vue/valid-define-props": "error",
+        "vue/valid-next-tick": "error",
+        "vue/component-definition-name-casing": "warn",
+        "vue/prop-name-casing": "warn",
+        "vue/require-default-prop": "warn",
+        "vue/require-prop-types": "warn",
+        "vue/no-multiple-slot-args": "warn",
+        "vue/no-required-prop-with-default": "warn"
+      }
+    },
+    {
+      "files": ["modules/delivery/**/*.{ts,vue}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/warehouse/core/domain/**", "**/warehouse/core/infrastructure/**"],
+                "message": "Modular Monolith Isolation: delivery must NEVER import warehouse/core/domain or warehouse/core/infrastructure. Use WarehouseStockPort ACL or Domain Events."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["modules/warehouse/**/*.{ts,vue}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/delivery/core/domain/**", "**/delivery/core/infrastructure/**"],
+                "message": "Modular Monolith Isolation: warehouse must NEVER import delivery/core/domain or delivery/core/infrastructure."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["modules/*/core/domain/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "nuxt",
+                  "@nuxt/*",
+                  "nitro",
+                  "nitropack",
+                  "nitropack/*",
+                  "h3",
+                  "vue",
+                  "vue-router",
+                  "drizzle-orm",
+                  "drizzle-orm/*",
+                  "better-sqlite3",
+                  "zod",
+                  "evlog",
+                  "evlog/*",
+                  "#imports",
+                  "#app",
+                  "#nitro",
+                  "node:*"
+                ],
+                "message": "Hexagonal Domain Purity: core/domain/ must be pure TypeScript with zero framework, DB, validation, or Node imports."
+              },
+              {
+                "group": [
+                  "**/core/infrastructure/**",
+                  "**/core/application/**",
+                  "**/runtime/**",
+                  "**/shared/**",
+                  "**/warehouse/core/domain/**",
+                  "**/delivery/core/domain/**"
+                ],
+                "message": "Hexagonal Dependency Rule: core/domain/ cannot depend on application, infrastructure, shared, runtime, or sibling bounded-context domain layers."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["modules/*/core/application/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "nuxt",
+                  "@nuxt/*",
+                  "nitro",
+                  "nitropack",
+                  "nitropack/*",
+                  "h3",
+                  "vue",
+                  "vue-router",
+                  "drizzle-orm",
+                  "drizzle-orm/*",
+                  "better-sqlite3",
+                  "zod",
+                  "evlog",
+                  "evlog/*",
+                  "#imports",
+                  "#app",
+                  "#nitro",
+                  "node:*"
+                ],
+                "message": "Hexagonal Application Isolation: core/application/ must not depend on framework, DB, or validation libraries."
+              },
+              {
+                "group": [
+                  "**/core/infrastructure/**",
+                  "**/runtime/**",
+                  "**/shared/**",
+                  "**/warehouse/core/domain/**",
+                  "**/delivery/core/domain/**"
+                ],
+                "message": "Hexagonal Dependency Rule: core/application/ can only depend on own core/domain/ and hexagonal-kernel/core/."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -15,8 +15,10 @@ export interface ReleaseCargoFromBinOutput {
   readonly releasedCargoId: string
 }
 
-export class ReleaseCargoFromBinUseCase
-implements UseCase<ReleaseCargoFromBinInput, ReleaseCargoFromBinOutput> {
+export class ReleaseCargoFromBinUseCase implements UseCase<
+  ReleaseCargoFromBinInput,
+  ReleaseCargoFromBinOutput
+> {
   readonly name = 'ReleaseCargoFromBinUseCase'
   readonly boundedContext = 'warehouse'
 

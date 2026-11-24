@@ -59,7 +59,10 @@ export interface DeliveryContainer {
   readonly dispatchShipment: UseCase<DispatchShipmentInput, ShipmentView>
   readonly advanceTransit: UseCase<AdvanceShipmentTransitInput, ShipmentView>
   readonly markDelivered: UseCase<MarkShipmentDeliveredInput, ShipmentView>
-  readonly recordAttemptFailure: UseCase<RecordDeliveryAttemptFailureInput, RecordDeliveryAttemptFailureOutput>
+  readonly recordAttemptFailure: UseCase<
+    RecordDeliveryAttemptFailureInput,
+    RecordDeliveryAttemptFailureOutput
+  >
   readonly cancelShipment: UseCase<CancelShipmentInput, ShipmentView>
   readonly evaluateSlas: UseCase<void, SlaEvaluationView>
   readonly listShipments: UseCase<ShipmentFilter | undefined, ShipmentView[]>
@@ -80,12 +83,16 @@ export function createDeliveryContainer(deps: {
   faultState?: CarrierFaultStateDto
   seed?: boolean
 }): DeliveryContainer {
-  const persistenceFactory = selectDeliveryPersistenceFactory(deps.persistenceMode, deps.sqliteDriver)
+  const persistenceFactory = selectDeliveryPersistenceFactory(
+    deps.persistenceMode,
+    deps.sqliteDriver,
+  )
   const { adapterName, shipmentRepository } = persistenceFactory.create()
 
-  const carrierGateway: CarrierGatewayPort = deps.carrierMode === 'webhook-console'
-    ? new WebhookConsoleCarrierGatewayAdapter()
-    : new SimulatedCarrierGatewayAdapter(deps.faultState)
+  const carrierGateway: CarrierGatewayPort =
+    deps.carrierMode === 'webhook-console'
+      ? new WebhookConsoleCarrierGatewayAdapter()
+      : new SimulatedCarrierGatewayAdapter(deps.faultState)
 
   const webhookLogs: CarrierWebhookDeliveryLog[] = []
   const unsubWebhook = registerCarrierWebhookSubscriber(deps.eventBus, webhookLogs)
@@ -96,17 +103,11 @@ export function createDeliveryContainer(deps: {
     domainComponent: string,
     drivenAdapter = adapterName,
   ): UseCase<TIn, TOut> => {
-    return new TracingUseCaseDecorator(
-      useCase,
-      deps.traceCollector,
-      deps.clock,
-      deps.eventBus,
-      {
-        drivingAdapter,
-        domainComponent,
-        drivenAdapter,
-      },
-    )
+    return new TracingUseCaseDecorator(useCase, deps.traceCollector, deps.clock, deps.eventBus, {
+      drivingAdapter,
+      domainComponent,
+      drivenAdapter,
+    })
   }
 
   const quoteShipment = wrap(
@@ -177,9 +178,10 @@ export function createDeliveryContainer(deps: {
     'AuditLog Domain Event Projection',
   )
 
-  const ready = deps.seed === false
-    ? Promise.resolve()
-    : seedShipmentsIfEmpty(shipmentRepository, deps.eventBus, deps.clock)
+  const ready =
+    deps.seed === false
+      ? Promise.resolve()
+      : seedShipmentsIfEmpty(shipmentRepository, deps.eventBus, deps.clock)
 
   return {
     adapterName,

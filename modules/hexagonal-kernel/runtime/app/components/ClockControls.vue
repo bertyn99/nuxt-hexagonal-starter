@@ -20,18 +20,14 @@ const emit = defineEmits<{
         <UIcon name="i-lucide-clock" class="size-4 text-primary" />
         <span class="text-sm font-semibold">Virtual Clock (ClockPort)</span>
       </div>
-      <UBadge
-        :color="clock.offsetHours > 0 ? 'warning' : 'neutral'"
-        variant="subtle"
-        size="sm"
-      >
+      <UBadge :color="clock.offsetHours > 0 ? 'warning' : 'neutral'" variant="subtle" size="sm" class="tabular-nums">
         {{ clock.offsetHours > 0 ? `+${clock.offsetHours}h offset` : 'Live time' }}
       </UBadge>
     </div>
 
-    <div class="rounded-md bg-elevated px-3 py-2 font-mono text-xs text-highlighted">
-      {{ new Date(clock.currentTimeIso).toLocaleString() }}
-      <span class="ml-1 text-muted">({{ clock.mode }})</span>
+    <div class="rounded-md border border-default bg-elevated/50 px-3 py-2 font-mono text-xs text-highlighted tabular-nums">
+      <NuxtTime :datetime="clock.currentTimeIso" date-style="short" time-style="medium" />
+      <span> ({{ clock.mode }})</span>
     </div>
 
     <div v-if="clock.controllable" class="flex flex-wrap gap-2">

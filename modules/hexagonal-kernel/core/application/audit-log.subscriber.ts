@@ -2,7 +2,10 @@ import type { DomainEvent } from '../domain/domain-event'
 import type { AuditLogPort } from './ports/audit-log.port'
 import type { EventBusPort } from './ports/event-bus.port'
 
-export function registerAuditLogSubscriber(eventBus: EventBusPort, auditLog: AuditLogPort): () => void {
+export function registerAuditLogSubscriber(
+  eventBus: EventBusPort,
+  auditLog: AuditLogPort,
+): () => void {
   return eventBus.subscribeAll(async (event: DomainEvent) => {
     const summary = formatDomainEventSummary(event)
     await auditLog.recordFromEvent(event, summary)

@@ -16,14 +16,22 @@ export class Weight extends ValueObject<WeightProps> {
 
   static fromGrams(grams: number): Weight {
     if (!Number.isFinite(grams) || grams < 0) {
-      throw new ValidationDomainError('INVALID_WEIGHT', 'Weight in grams must be a non-negative finite number.', { grams })
+      throw new ValidationDomainError(
+        'INVALID_WEIGHT',
+        'Weight in grams must be a non-negative finite number.',
+        { grams },
+      )
     }
     return new Weight(Math.round(grams))
   }
 
   static fromKilograms(kg: number): Weight {
     if (!Number.isFinite(kg) || kg < 0) {
-      throw new ValidationDomainError('INVALID_WEIGHT', 'Weight in kilograms must be a non-negative finite number.', { kg })
+      throw new ValidationDomainError(
+        'INVALID_WEIGHT',
+        'Weight in kilograms must be a non-negative finite number.',
+        { kg },
+      )
     }
     return new Weight(Math.round(kg * 1000))
   }
@@ -43,10 +51,14 @@ export class Weight extends ValueObject<WeightProps> {
   subtract(other: Weight): Weight {
     const diff = this.props.grams - other.props.grams
     if (diff < 0) {
-      throw new ValidationDomainError('NEGATIVE_WEIGHT_RESULT', 'Resulting weight cannot be negative.', {
-        leftGrams: this.props.grams,
-        rightGrams: other.props.grams,
-      })
+      throw new ValidationDomainError(
+        'NEGATIVE_WEIGHT_RESULT',
+        'Resulting weight cannot be negative.',
+        {
+          leftGrams: this.props.grams,
+          rightGrams: other.props.grams,
+        },
+      )
     }
     return new Weight(diff)
   }

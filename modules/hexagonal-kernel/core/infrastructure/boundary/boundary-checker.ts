@@ -27,7 +27,8 @@ const FORBIDDEN_CORE_PACKAGES = [
   'node:',
 ]
 
-const IMPORT_REGEX = /(?:import|export)\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]|import\s*\(\s*['"]([^'"]+)['"]\s*\)/g
+const IMPORT_REGEX =
+  /(?:import|export)\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]|import\s*\(\s*['"]([^'"]+)['"]\s*\)/g
 
 function toPosix(p: string): string {
   return p.split('\\').join('/')
@@ -45,8 +46,7 @@ function walkTsFiles(dir: string, acc: string[] = []): string[] {
         continue
       }
       walkTsFiles(full, acc)
-    }
-    else if (/\.(ts|mts|cts|vue)$/.test(entry) && !entry.endsWith('.d.ts')) {
+    } else if (/\.(ts|mts|cts|vue)$/.test(entry) && !entry.endsWith('.d.ts')) {
       acc.push(full)
     }
   }
@@ -55,9 +55,7 @@ function walkTsFiles(dir: string, acc: string[] = []): string[] {
 
 export function extractImportSpecifiers(source: string): string[] {
   // Strip single-line and multi-line comments to avoid false positives in comments/JSDoc
-  const cleaned = source
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/\/\/.*$/gm, '')
+  const cleaned = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
   const imports: string[] = []
   let match: RegExpExecArray | null
   while ((match = IMPORT_REGEX.exec(cleaned)) !== null) {
@@ -77,7 +75,11 @@ function isForbiddenPackage(spec: string): boolean {
   )
 }
 
-function resolveImportToRepoRelative(rootDir: string, filePath: string, spec: string): string | null {
+function resolveImportToRepoRelative(
+  rootDir: string,
+  filePath: string,
+  spec: string,
+): string | null {
   if (spec.startsWith('.')) {
     const abs = resolve(dirname(filePath), spec)
     return toPosix(relative(rootDir, abs))
@@ -91,7 +93,7 @@ function resolveImportToRepoRelative(rootDir: string, filePath: string, spec: st
   return null
 }
 
-function parseModuleLayer(relPath: string): { moduleName: string, layer: string } | null {
+function parseModuleLayer(relPath: string): { moduleName: string; layer: string } | null {
   const match = relPath.match(/^modules\/([^/]+)\/(.+)$/)
   if (!match) {
     return null
@@ -151,8 +153,10 @@ export function checkHexagonalBoundaries(rootDir: string): BoundaryViolation[] {
         }
         if (normalizedTarget) {
           const targetInfo = parseModuleLayer(normalizedTarget)
-          const isSameModuleDomain = targetInfo?.moduleName === owner.moduleName && targetInfo.layer === 'domain'
-          const isKernelDomain = targetInfo?.moduleName === 'hexagonal-kernel' && targetInfo.layer === 'domain'
+          const isSameModuleDomain =
+            targetInfo?.moduleName === owner.moduleName && targetInfo.layer === 'domain'
+          const isKernelDomain =
+            targetInfo?.moduleName === 'hexagonal-kernel' && targetInfo.layer === 'domain'
           if (!isSameModuleDomain && !isKernelDomain) {
             violations.push({
               rule: 'DOMAIN_PURITY',
@@ -178,10 +182,12 @@ export function checkHexagonalBoundaries(rootDir: string): BoundaryViolation[] {
         }
         if (normalizedTarget) {
           const targetInfo = parseModuleLayer(normalizedTarget)
-          const isOwnCore = targetInfo?.moduleName === owner.moduleName
-            && (targetInfo.layer === 'domain' || targetInfo.layer === 'application')
-          const isKernelCore = targetInfo?.moduleName === 'hexagonal-kernel'
-            && (targetInfo.layer === 'domain' || targetInfo.layer === 'application')
+          const isOwnCore =
+            targetInfo?.moduleName === owner.moduleName &&
+            (targetInfo.layer === 'domain' || targetInfo.layer === 'application')
+          const isKernelCore =
+            targetInfo?.moduleName === 'hexagonal-kernel' &&
+            (targetInfo.layer === 'domain' || targetInfo.layer === 'application')
           if (!isOwnCore && !isKernelCore) {
             violations.push({
               rule: 'APPLICATION_ISOLATION',
@@ -198,9 +204,9 @@ export function checkHexagonalBoundaries(rootDir: string): BoundaryViolation[] {
       if (owner.moduleName !== 'hexagonal-kernel' && normalizedTarget) {
         const targetInfo = parseModuleLayer(normalizedTarget)
         if (
-          targetInfo
-          && targetInfo.moduleName !== owner.moduleName
-          && targetInfo.moduleName !== 'hexagonal-kernel'
+          targetInfo &&
+          targetInfo.moduleName !== owner.moduleName &&
+          targetInfo.moduleName !== 'hexagonal-kernel'
         ) {
           // Cross-context modules must NEVER import another context's core/domain or core/infrastructure
           if (targetInfo.layer === 'domain' || targetInfo.layer === 'infrastructure') {

@@ -42,20 +42,18 @@ export class StandardGroundStrategy implements CarrierStrategy {
     const baseCents = 1400
     const weightCents = Math.round(input.weightKg * 120)
     const volumeCents = Math.round(input.volumeM3 * 900)
-    const surchargeCents = input.handlingClass === 'HAZMAT'
-      ? 4500
-      : input.handlingClass === 'FRAGILE'
-        ? 1200
-        : 0
+    const surchargeCents =
+      input.handlingClass === 'HAZMAT' ? 4500 : input.handlingClass === 'FRAGILE' ? 1200 : 0
 
     return {
       carrierMode: this.mode,
       carrierLabel: this.label,
       cost: Money.fromCents(baseCents + weightCents + volumeCents + surchargeCents, 'EUR'),
       estimatedHours: input.handlingClass === 'HAZMAT' ? 48 : 36,
-      notes: input.handlingClass === 'HAZMAT'
-        ? 'ADR-certified ground freight with hazmat surcharge'
-        : 'Economical regional ground network',
+      notes:
+        input.handlingClass === 'HAZMAT'
+          ? 'ADR-certified ground freight with hazmat surcharge'
+          : 'Economical regional ground network',
     }
   }
 }
@@ -88,7 +86,11 @@ export class ExpressAirStrategy implements CarrierStrategy {
 export class ColdChainCourierStrategy implements CarrierStrategy {
   readonly mode: CarrierMode = 'COLD_CHAIN_COURIER'
   readonly label = 'Cold-Chain Thermal Courier'
-  readonly supportedHandlingClasses: readonly HandlingClass[] = ['COLD_CHAIN', 'FRAGILE', 'STANDARD']
+  readonly supportedHandlingClasses: readonly HandlingClass[] = [
+    'COLD_CHAIN',
+    'FRAGILE',
+    'STANDARD',
+  ]
 
   quote(input: CarrierQuoteInput): CarrierQuoteResult {
     if (!this.supportedHandlingClasses.includes(input.handlingClass)) {

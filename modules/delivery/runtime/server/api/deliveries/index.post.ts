@@ -7,7 +7,7 @@ import {
 import { createShipmentRequestSchema } from '../../../../shared/schemas/delivery.schema'
 import { useDeliveryModule } from '../../utils/delivery-container'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const log = useLogger(event)
   try {
     const payload = await parseBodyWithSchema(event, createShipmentRequestSchema)
@@ -34,8 +34,7 @@ export default defineEventHandler(async (event) => {
     })
     setResponseStatus(event, 201)
     return created
-  }
-  catch (error: unknown) {
+  } catch (error: unknown) {
     mapDomainErrorToHttp(error, event)
   }
 })

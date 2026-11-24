@@ -1,4 +1,7 @@
-import type { ShipmentFilter, ShipmentRepositoryPort } from '../../../application/ports/outbound/shipment-repository.port'
+import type {
+  ShipmentFilter,
+  ShipmentRepositoryPort,
+} from '../../../application/ports/outbound/shipment-repository.port'
 import type { Shipment } from '../../../domain/entities/shipment'
 import { fromShipmentRecord, toShipmentRecord } from '../shipment.mapper'
 import type { ShipmentPersistenceRecord } from '../shipment.mapper'
@@ -23,7 +26,7 @@ export class InMemoryShipmentRepository implements ShipmentRepositoryPort {
 
   async findAll(filter?: ShipmentFilter): Promise<Shipment[]> {
     return Array.from(this.records.values())
-      .filter((rec) => {
+      .filter(rec => {
         if (filter?.state && rec.state !== filter.state) {
           return false
         }

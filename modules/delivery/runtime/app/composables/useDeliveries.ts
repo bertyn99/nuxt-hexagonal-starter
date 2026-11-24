@@ -1,64 +1,62 @@
-import type {
-  AvailableCargoDto,
-  CarrierModeDto,
-  DeliveryQuoteDto,
-  ShipmentDto,
-  ShipmentStateDto,
-  ShipmentTimelineDto,
-} from '../../../shared/types/delivery'
-import type { CreateShipmentRequest, QuoteShipmentRequest } from '../../../shared/schemas/delivery.schema'
+import type { AvailableCargoDto, ShipmentDto } from '../../../shared/types/delivery'
+import type { CreateShipmentRequest } from '../../../shared/schemas/delivery.schema'
 
-function formatClientError(err: unknown, fallbackMessage: string) {
-  const parsed = parseError(err)
-  const code = parsed.code ?? (typeof parsed.data?.code === 'string' ? parsed.data.code : 'DOMAIN_RULE_VIOLATION')
-  const details = [parsed.why ?? parsed.message ?? fallbackMessage, parsed.fix ? `Fix: ${parsed.fix}` : null]
-    .filter(Boolean)
-    .join(' — ')
-  return { parsed, code, details }
+export function useDeliveryShipments() {
+  return useAPI<ShipmentDto[]>('/api/deliveries', {
+    key: API_CACHE_KEYS.deliveryShipments,
+    default: () => [],
+  })
+}
+
+export function useAvailableCargo() {
+  return useAPI<AvailableCargoDto[]>('/api/deliveries/available-cargo', {
+    key: API_CACHE_KEYS.deliveryAvailableCargo,
+    default: () => [],
+  })
 }
 
 export function useDeliveries() {
+  const { $api } = useNuxtApp()
   const toast = useToast()
 
-  const shipments = useState<ShipmentDto[]>('delivery-shipments', () => [])
-  const availableCargo = useState<AvailableCargoDto[]>('delivery-available-cargo', () => [])
-  const loading = useState<boolean>('delivery-loading', () => false)
+  const { data: shipmentsData } = useNuxtData<ShipmentDto[]>(API_CACHE_KEYS.deliveryShipments)
+  const { data: availableCargoData } = useNuxtData<AvailableCargoDto[]>(
+    API_CACHE_KEYS.deliveryAvailableCargo,
+  )
 
-  async function fetchShipments(filters?: {
-    state?: ShipmentStateDto
-    carrierMode?: CarrierModeDto
-    slaBreachedOnly?: boolean
-  }) {
-    loading.value = true
-    try {
-      shipments.value = await $fetch<ShipmentDto[]>('/api/deliveries', {
-        query: {
-          state: filters?.state,
-          carrierMode: filters?.carrierMode,
-          slaBreached: filters?.slaBreachedOnly ? 'true' : undefined,
-        },
-      })
+  const shipments = computed<readonly ShipmentDto[]>(() => shipmentsData.value ?? [])
+  const availableCargo = computed<readonly AvailableCargoDto[]>(
+    () => availableCargoData.value ?? [],
+  )
+
+  async function ensureShipmentsLoaded() {
+    if (shipmentsData.value !== undefined) {
+      return
     }
-    finally {
-      loading.value = false
-    }
+    shipmentsData.value = await $api<ShipmentDto[]>('/api/deliveries')
   }
 
-  async function fetchAvailableCargo() {
-    availableCargo.value = await $fetch<AvailableCargoDto[]>('/api/deliveries/available-cargo')
-    return availableCargo.value
+  async function invalidateAfterMutation() {
+    clearNuxtData([
+      API_CACHE_KEYS.warehouseBins,
+      API_CACHE_KEYS.warehouseUtilization,
+      API_CACHE_KEYS.hexInspector,
+    ])
+    await refreshNuxtData([
+      API_CACHE_KEYS.deliveryShipments,
+      API_CACHE_KEYS.deliveryAvailableCargo,
+      API_CACHE_KEYS.warehouseBins,
+      API_CACHE_KEYS.warehouseUtilization,
+      API_CACHE_KEYS.hexInspector,
+    ])
   }
 
-  async function quoteShipment(payload: QuoteShipmentRequest) {
-    return await $fetch<DeliveryQuoteDto>('/api/deliveries/quote', {
-      method: 'POST',
-      body: payload,
-    })
-  }
-
-  async function createShipment(payload: CreateShipmentRequest) {
+  async function createShipment(
+    payload: CreateShipmentRequest,
+    options?: { silentErrorToast?: boolean },
+  ) {
     try {
-      const created = await $fetch<ShipmentDto>('/api/deliveries', {
+      const created = await $api<ShipmentDto>('/api/deliveries', {
         method: 'POST',
         body: payload,
       })
@@ -68,24 +66,18 @@ export function useDeliveries() {
         color: 'success',
         icon: 'i-lucide-truck',
       })
-      await Promise.all([fetchShipments(), fetchAvailableCargo()])
+      await invalidateAfterMutation()
       return created
-    }
-    catch (err: unknown) {
-      const { parsed, code, details } = formatClientError(err, 'Failed to create shipment')
-      log.error({
-        action: 'delivery_create_shipment_failed',
-        code,
-        status: parsed.status,
-        cargoId: payload.cargoId,
-        carrierMode: payload.carrierMode,
-      })
-      toast.add({
-        title: `Shipment Rejected (${code})`,
-        description: details,
-        color: 'error',
-        icon: 'i-lucide-shield-alert',
-      })
+    } catch (err: unknown) {
+      if (!options?.silentErrorToast) {
+        const { code, details } = formatApiError(err, 'Failed to create shipment')
+        toast.add({
+          title: `Shipment Rejected (${code})`,
+          description: details,
+          color: 'error',
+          icon: 'i-lucide-shield-alert',
+        })
+      }
       throw err
     }
   }
@@ -96,13 +88,12 @@ export function useDeliveries() {
     body?: Record<string, unknown>,
   ) {
     try {
-      const res = await $fetch<ShipmentDto | { shipment: ShipmentDto, resolution: { action: string, note: string } }>(
-        `/api/deliveries/${encodeURIComponent(shipmentId)}/${endpoint}`,
-        {
-          method: 'POST',
-          body,
-        },
-      )
+      const res = await $api<
+        ShipmentDto | { shipment: ShipmentDto; resolution: { action: string; note: string } }
+      >(`/api/deliveries/${encodeURIComponent(shipmentId)}/${endpoint}`, {
+        method: 'POST',
+        body,
+      })
 
       if ('resolution' in res) {
         toast.add({
@@ -111,28 +102,22 @@ export function useDeliveries() {
           color: res.shipment.state === 'ReturnedToWarehouse' ? 'error' : 'warning',
           icon: 'i-lucide-alert-octagon',
         })
-      }
-      else {
+      } else {
         toast.add({
           title: `${res.trackingNumber} → ${res.state}`,
-          description: res.carrierReference ? `Carrier Ref: ${res.carrierReference}` : `Updated state to ${res.state}`,
+          description: res.carrierReference
+            ? `Carrier Ref: ${res.carrierReference}`
+            : `Updated state to ${res.state}`,
           color: res.state === 'Delivered' ? 'success' : 'info',
-          icon: res.state === 'Delivered' ? 'i-lucide-check-circle-2' : 'i-lucide-arrow-right-circle',
+          icon:
+            res.state === 'Delivered' ? 'i-lucide-check-circle-2' : 'i-lucide-arrow-right-circle',
         })
       }
 
-      await Promise.all([fetchShipments(), fetchAvailableCargo()])
+      await invalidateAfterMutation()
       return res
-    }
-    catch (err: unknown) {
-      const { parsed, code, details } = formatClientError(err, 'Transition failed')
-      log.error({
-        action: 'delivery_transition_failed',
-        endpoint,
-        shipmentId,
-        code,
-        status: parsed.status,
-      })
+    } catch (err: unknown) {
+      const { code, details } = formatApiError(err, 'Transition failed')
       toast.add({
         title: `Domain Guard Blocked Action (${code})`,
         description: details,
@@ -143,19 +128,11 @@ export function useDeliveries() {
     }
   }
 
-  async function fetchTimeline(shipmentId: string) {
-    return await $fetch<ShipmentTimelineDto>(`/api/deliveries/${encodeURIComponent(shipmentId)}/timeline`)
-  }
-
   return {
     shipments,
     availableCargo,
-    loading,
-    fetchShipments,
-    fetchAvailableCargo,
-    quoteShipment,
+    ensureShipmentsLoaded,
     createShipment,
     runTransition,
-    fetchTimeline,
   }
 }

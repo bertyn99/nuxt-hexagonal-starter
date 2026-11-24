@@ -11,7 +11,7 @@ A production-grade **Nuxt 4** repository template demonstrating **Hexagonal Arch
 - **4-Layer Automated Architecture Enforcement:**
   1. **Compile-time (`tsconfig.domain.json`):** Isolated TypeScript config with `"types": []` covering `modules/*/core/domain/**/*.ts` — ambient Nuxt/Node/DOM globals fail `tsc` immediately.
   2. **Build/Dev-time:** `modules/hexagonal-kernel/index.ts` validates boundaries during `nuxt prepare` and `builder:watch`.
-  3. **Lint-time (`eslint.config.mjs`):** Restricted import rules enforcing inward-only dependencies and cross-context isolation.
+  3. **Lint-time (`.oxlintrc.json`):** Oxlint `no-restricted-imports` rules enforcing inward-only dependencies and cross-context isolation.
   4. **Test-time (`test/arch/`):** Vitest static import-graph assertions executed in CI.
 - **Live Architecture Inspector (`USlideover`):**
   - Inspect wired adapters & registered local modules.
@@ -22,6 +22,7 @@ A production-grade **Nuxt 4** repository template demonstrating **Hexagonal Arch
 ## Using This Template
 
 When you click **"Use this template"**:
+
 - **Keep:** `modules/hexagonal-kernel/`, `app/`, `tsconfig.domain.json`, `vitest.config.ts`, `test/arch/`, `docs/adr/`.
 - **Delete or replace:** `modules/warehouse/` and `modules/delivery/` — add `modules/<your-bounded-context>/` following the same module contract.
 
@@ -38,8 +39,8 @@ Configure adapters in `nuxt.config.ts`:
 export default defineNuxtConfig({
   hexagonal: {
     persistence: 'drizzle-sqlite', // 'in-memory' | 'drizzle-sqlite'
-    carrier: 'simulated',          // 'simulated' | 'webhook-console'
-    clock: 'virtual',              // 'system' | 'virtual'
+    carrier: 'simulated', // 'simulated' | 'webhook-console'
+    clock: 'virtual', // 'system' | 'virtual'
     inspector: true,
     sqlitePath: '.data/logistics.sqlite',
   },

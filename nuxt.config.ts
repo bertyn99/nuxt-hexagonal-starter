@@ -1,9 +1,5 @@
 export default defineNuxtConfig({
-  modules: [
-    '@nuxt/ui',
-    '@nuxt/eslint',
-    'evlog/nuxt',
-  ],
+  modules: ['@nuxt/ui', 'evlog/nuxt'],
 
   evlog: {
     env: {
@@ -17,10 +13,7 @@ export default defineNuxtConfig({
       '/api/_hexagonal/**': { service: 'hexagonal-kernel' },
     },
     sampling: {
-      keep: [
-        { status: 400 },
-        { duration: 1000 },
-      ],
+      keep: [{ status: 400 }, { duration: 1000 }],
     },
   },
 

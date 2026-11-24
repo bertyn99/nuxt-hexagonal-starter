@@ -32,7 +32,11 @@ export class Money extends ValueObject<MoneyProps> {
 
   static fromMajor(amount: number, currency = 'EUR'): Money {
     if (!Number.isFinite(amount) || amount < 0) {
-      throw new ValidationDomainError('INVALID_MONEY_AMOUNT', 'Money amount must be non-negative.', { amount })
+      throw new ValidationDomainError(
+        'INVALID_MONEY_AMOUNT',
+        'Money amount must be non-negative.',
+        { amount },
+      )
     }
     return Money.fromCents(Math.round(amount * 100), currency)
   }
@@ -61,13 +65,21 @@ export class Money extends ValueObject<MoneyProps> {
 
   multiply(factor: number): Money {
     if (!Number.isFinite(factor) || factor < 0) {
-      throw new ValidationDomainError('INVALID_MULTIPLIER', 'Money multiplier must be a non-negative finite number.')
+      throw new ValidationDomainError(
+        'INVALID_MULTIPLIER',
+        'Money multiplier must be a non-negative finite number.',
+      )
     }
     return new Money(Math.round(this.props.amountCents * factor), this.props.currency)
   }
 
   format(): string {
-    const symbol = this.props.currency === 'EUR' ? '€' : this.props.currency === 'USD' ? '$' : `${this.props.currency} `
+    const symbol =
+      this.props.currency === 'EUR'
+        ? '€'
+        : this.props.currency === 'USD'
+          ? '$'
+          : `${this.props.currency} `
     return `${symbol}${(this.props.amountCents / 100).toFixed(2)}`
   }
 }

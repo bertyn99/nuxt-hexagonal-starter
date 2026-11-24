@@ -1,7 +1,10 @@
 import { and, desc, eq } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import type { DrizzleSqliteDriver } from '../../../../../hexagonal-kernel/core/infrastructure/persistence/drizzle-sqlite-driver'
-import type { ShipmentFilter, ShipmentRepositoryPort } from '../../../application/ports/outbound/shipment-repository.port'
+import type {
+  ShipmentFilter,
+  ShipmentRepositoryPort,
+} from '../../../application/ports/outbound/shipment-repository.port'
 import type { Shipment } from '../../../domain/entities/shipment'
 import type { CarrierMode } from '../../../domain/policies/carrier-strategy'
 import type { ShipmentStateName } from '../../../domain/states/shipment-state'
@@ -121,9 +124,6 @@ export class DrizzleSqliteShipmentRepository implements ShipmentRepositoryPort {
   }
 
   async delete(id: string): Promise<void> {
-    this.driver.db
-      .delete(deliveryShipmentsTable)
-      .where(eq(deliveryShipmentsTable.id, id))
-      .run()
+    this.driver.db.delete(deliveryShipmentsTable).where(eq(deliveryShipmentsTable.id, id)).run()
   }
 }

@@ -90,7 +90,10 @@ export class OutForDeliveryState extends BaseShipmentState {
     return new DeliveredState()
   }
 
-  override recordFailedAttempt(_trackingNumber: string, shouldReturnToWarehouse: boolean): ShipmentState {
+  override recordFailedAttempt(
+    _trackingNumber: string,
+    shouldReturnToWarehouse: boolean,
+  ): ShipmentState {
     return shouldReturnToWarehouse
       ? new ReturnedToWarehouseState()
       : new DeliveryAttemptFailedState()
@@ -108,7 +111,10 @@ export class DeliveryAttemptFailedState extends BaseShipmentState {
     return new DeliveredState()
   }
 
-  override recordFailedAttempt(_trackingNumber: string, shouldReturnToWarehouse: boolean): ShipmentState {
+  override recordFailedAttempt(
+    _trackingNumber: string,
+    shouldReturnToWarehouse: boolean,
+  ): ShipmentState {
     return shouldReturnToWarehouse
       ? new ReturnedToWarehouseState()
       : new DeliveryAttemptFailedState()

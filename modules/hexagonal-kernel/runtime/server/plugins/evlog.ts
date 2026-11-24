@@ -5,13 +5,10 @@ import { createDrainPipeline } from 'evlog/pipeline'
 import { defineNitroPlugin } from 'nitropack/runtime'
 import { useHexagonalKernel } from '../utils/hexagonal-kernel'
 
-export default defineNitroPlugin((nitroApp) => {
-  const enrichers = [
-    createUserAgentEnricher(),
-    createRequestSizeEnricher(),
-  ]
+export default defineNitroPlugin(nitroApp => {
+  const enrichers = [createUserAgentEnricher(), createRequestSizeEnricher()]
 
-  nitroApp.hooks.hook('evlog:enrich', (ctx) => {
+  nitroApp.hooks.hook('evlog:enrich', ctx => {
     for (const enricher of enrichers) {
       enricher(ctx)
     }
@@ -26,7 +23,7 @@ export default defineNitroPlugin((nitroApp) => {
     }
   })
 
-  nitroApp.hooks.hook('evlog:emit:keep', (ctx) => {
+  nitroApp.hooks.hook('evlog:emit:keep', ctx => {
     const kernel = useHexagonalKernel()
     if (kernel.faultState.outageEnabled || kernel.faultState.extraDelayHours > 0) {
       ctx.shouldKeep = true
@@ -53,7 +50,9 @@ export default defineNitroPlugin((nitroApp) => {
       },
       maxBufferSize: 1000,
       onDropped: (events, error) => {
-        process.stderr.write(`[evlog] Dropped ${events.length} event(s): ${error?.message ?? 'buffer overflow'}\n`)
+        process.stderr.write(
+          `[evlog] Dropped ${events.length} event(s): ${error?.message ?? 'buffer overflow'}\n`,
+        )
       },
     })
 

@@ -15,8 +15,10 @@ export interface ReturnCargoToWarehouseOutput {
   readonly returnedCargoId: string
 }
 
-export class ReturnCargoToWarehouseUseCase
-implements UseCase<ReturnCargoToWarehouseInput, ReturnCargoToWarehouseOutput> {
+export class ReturnCargoToWarehouseUseCase implements UseCase<
+  ReturnCargoToWarehouseInput,
+  ReturnCargoToWarehouseOutput
+> {
   readonly name = 'ReturnCargoToWarehouseUseCase'
   readonly boundedContext = 'warehouse'
 

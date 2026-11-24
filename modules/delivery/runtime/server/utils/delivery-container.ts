@@ -27,7 +27,8 @@ export async function useDeliveryModule(): Promise<DeliveryContainer> {
     kernel.registerModule({
       name: 'delivery',
       boundedContext: 'TMS (Dispatch)',
-      description: 'Shipment state machine, CarrierStrategy quotes, DeliveryExceptionChain, and SLA tracking.',
+      description:
+        'Shipment state machine, CarrierStrategy quotes, DeliveryExceptionChain, and SLA tracking.',
       persistenceAdapter: deliveryInstance.adapterName,
       endpointsPrefix: '/api/deliveries/*',
       pagePath: '/deliveries',

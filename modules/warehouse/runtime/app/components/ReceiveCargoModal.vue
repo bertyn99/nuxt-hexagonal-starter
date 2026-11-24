@@ -19,8 +19,14 @@ const emit = defineEmits<{
 }>()
 
 const { receiveCargo } = useWarehouse()
-const submitting = ref(false)
-const cargoKind = ref<'PARCEL' | 'PALLET'>('PARCEL')
+const submitting = shallowRef(false)
+const submitError = shallowRef<string | null>(null)
+const cargoKind = shallowRef<'PARCEL' | 'PALLET'>('PARCEL')
+
+const kindTabs = [
+  { label: 'Single Parcel (Leaf)', value: 'PARCEL', icon: 'i-lucide-box' },
+  { label: 'Composite Pallet', value: 'PALLET', icon: 'i-lucide-layers' },
+]
 
 const handlingOptions: { label: string, value: HandlingClassDto }[] = [
   { label: 'Standard', value: 'STANDARD' },
@@ -80,9 +86,16 @@ const palletState = reactive({
   ] as ParcelItemForm[],
 })
 
+watch(cargoKind, () => {
+  submitError.value = null
+})
+
 watch(
   () => [props.defaultBinId, props.bins, open.value] as const,
-  ([defaultId, bins]) => {
+  ([defaultId, bins, isOpen]) => {
+    if (isOpen) {
+      submitError.value = null
+    }
     const fallback = defaultId || bins[0]?.id || ''
     if (fallback) {
       parcelState.binId = fallback
@@ -141,6 +154,7 @@ function removePalletItem(index: number) {
 
 async function onSubmitParcel(event: FormSubmitEvent<ReceiveCargoRequest>) {
   submitting.value = true
+  submitError.value = null
   try {
     const payload = {
       ...event.data,
@@ -151,9 +165,12 @@ async function onSubmitParcel(event: FormSubmitEvent<ReceiveCargoRequest>) {
         label: event.data.label,
       },
     }
-    await receiveCargo(payload)
+    await receiveCargo(payload, { silentErrorToast: true })
     open.value = false
     emit('submitted')
+  }
+  catch (err: unknown) {
+    submitError.value = formatApiError(err, 'Failed to store parcel').details
   }
   finally {
     submitting.value = false
@@ -162,10 +179,14 @@ async function onSubmitParcel(event: FormSubmitEvent<ReceiveCargoRequest>) {
 
 async function onSubmitPallet(event: FormSubmitEvent<ReceiveCargoRequest>) {
   submitting.value = true
+  submitError.value = null
   try {
-    await receiveCargo(event.data)
+    await receiveCargo(event.data, { silentErrorToast: true })
     open.value = false
     emit('submitted')
+  }
+  catch (err: unknown) {
+    submitError.value = formatApiError(err, 'Failed to store pallet').details
   }
   finally {
     submitting.value = false
@@ -178,34 +199,31 @@ async function onSubmitPallet(event: FormSubmitEvent<ReceiveCargoRequest>) {
     v-model:open="open"
     title="Receive & Store Cargo"
     description="Store a leaf Parcel or a Composite Pallet. Domain invariants enforce zone compatibility, weight, and volume limits."
-    :ui="{ content: 'max-w-2xl' }"
+    :ui="{ content: 'max-w-2xl', footer: 'justify-end' }"
   >
     <template #body>
       <div class="space-y-4">
-        <div class="flex items-center gap-2">
-          <UButton
-            size="sm"
-            :color="cargoKind === 'PARCEL' ? 'primary' : 'neutral'"
-            :variant="cargoKind === 'PARCEL' ? 'solid' : 'outline'"
-            icon="i-lucide-box"
-            @click="cargoKind = 'PARCEL'"
-          >
-            Single Parcel (Leaf)
-          </UButton>
-          <UButton
-            size="sm"
-            :color="cargoKind === 'PALLET' ? 'primary' : 'neutral'"
-            :variant="cargoKind === 'PALLET' ? 'solid' : 'outline'"
-            icon="i-lucide-layers"
-            @click="cargoKind = 'PALLET'"
-          >
-            Composite Pallet
-          </UButton>
-        </div>
+        <UTabs
+          v-model="cargoKind"
+          :items="kindTabs"
+          :content="false"
+          size="sm"
+          class="w-full"
+        />
+
+        <UAlert
+          v-if="submitError"
+          color="error"
+          variant="subtle"
+          icon="i-lucide-shield-alert"
+          title="Domain Rule Rejected Storage"
+          :description="submitError"
+        />
 
         <!-- Single Parcel Form -->
         <UForm
           v-if="cargoKind === 'PARCEL'"
+          id="receive-parcel-form"
           :schema="receiveParcelRequestSchema"
           :state="parcelState"
           class="space-y-4"
@@ -222,7 +240,7 @@ async function onSubmitPallet(event: FormSubmitEvent<ReceiveCargoRequest>) {
 
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <UFormField label="SKU" name="sku" required>
-              <UInput v-model="parcelState.sku" class="w-full" />
+              <UInput v-model="parcelState.sku" class="w-full font-mono" />
             </UFormField>
             <UFormField label="Handling Class" name="parcel.handlingClass" required>
               <USelect
@@ -240,32 +258,24 @@ async function onSubmitPallet(event: FormSubmitEvent<ReceiveCargoRequest>) {
 
           <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <UFormField label="Weight (kg)" name="parcel.weightKg" required>
-              <UInput v-model.number="parcelState.parcel.weightKg" type="number" step="0.5" class="w-full" />
+              <UInput v-model.number="parcelState.parcel.weightKg" type="number" step="0.5" class="w-full font-mono" />
             </UFormField>
             <UFormField label="Length (cm)" name="parcel.lengthCm" required>
-              <UInput v-model.number="parcelState.parcel.lengthCm" type="number" class="w-full" />
+              <UInput v-model.number="parcelState.parcel.lengthCm" type="number" class="w-full font-mono" />
             </UFormField>
             <UFormField label="Width (cm)" name="parcel.widthCm" required>
-              <UInput v-model.number="parcelState.parcel.widthCm" type="number" class="w-full" />
+              <UInput v-model.number="parcelState.parcel.widthCm" type="number" class="w-full font-mono" />
             </UFormField>
             <UFormField label="Height (cm)" name="parcel.heightCm" required>
-              <UInput v-model.number="parcelState.parcel.heightCm" type="number" class="w-full" />
+              <UInput v-model.number="parcelState.parcel.heightCm" type="number" class="w-full font-mono" />
             </UFormField>
-          </div>
-
-          <div class="flex justify-end gap-2 pt-2">
-            <UButton color="neutral" variant="ghost" @click="open = false">
-              Cancel
-            </UButton>
-            <UButton type="submit" icon="i-lucide-package-plus" :loading="submitting">
-              Store Parcel
-            </UButton>
           </div>
         </UForm>
 
         <!-- Composite Pallet Form -->
         <UForm
           v-else
+          id="receive-pallet-form"
           :schema="receivePalletRequestSchema"
           :state="palletState"
           class="space-y-4"
@@ -282,27 +292,34 @@ async function onSubmitPallet(event: FormSubmitEvent<ReceiveCargoRequest>) {
 
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <UFormField label="Pallet SKU" name="sku" required>
-              <UInput v-model="palletState.sku" class="w-full" />
+              <UInput v-model="palletState.sku" class="w-full font-mono" />
             </UFormField>
             <UFormField label="Pallet Label" name="label" required>
               <UInput v-model="palletState.label" class="w-full" />
             </UFormField>
             <UFormField label="Tare Weight (kg)" name="tareWeightKg">
-              <UInput v-model.number="palletState.tareWeightKg" type="number" class="w-full" />
+              <UInput v-model.number="palletState.tareWeightKg" type="number" class="w-full font-mono" />
             </UFormField>
           </div>
 
-          <UAlert
-            color="info"
-            variant="subtle"
-            icon="i-lucide-layers"
-            title="Composite Pattern Live Preview"
-            :description="`Computed Pallet Totals: ${palletSummary.totalWeight} kg • ${palletSummary.totalVolume} m³ • Strictest Handling Class: ${palletSummary.strictest}`"
-          />
+          <div class="grid grid-cols-3 divide-x divide-default rounded-md border border-default bg-elevated/40 p-3 text-xs">
+            <div class="pr-3">
+              <span class="text-muted">Composite Weight</span>
+              <p class="mt-0.5 font-mono font-semibold text-highlighted tabular-nums">{{ palletSummary.totalWeight }} kg</p>
+            </div>
+            <div class="px-3">
+              <span class="text-muted">Total Volume</span>
+              <p class="mt-0.5 font-mono font-semibold text-highlighted tabular-nums">{{ palletSummary.totalVolume }} m³</p>
+            </div>
+            <div class="pl-3">
+              <span class="text-muted">Strictest Handling</span>
+              <p class="mt-0.5 font-mono font-semibold text-primary">{{ palletSummary.strictest }}</p>
+            </div>
+          </div>
 
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold uppercase tracking-wider text-muted">
+              <span class="text-xs font-medium text-muted">
                 Nested Child Parcels ({{ palletState.items.length }})
               </span>
               <UButton size="xs" color="neutral" variant="outline" icon="i-lucide-plus" @click="addPalletItem">
@@ -313,7 +330,7 @@ async function onSubmitPallet(event: FormSubmitEvent<ReceiveCargoRequest>) {
             <div
               v-for="(item, idx) in palletState.items"
               :key="idx"
-              class="rounded-lg border border-default p-3 space-y-2"
+              class="rounded-md border border-default p-3 space-y-2 bg-elevated/20"
             >
               <div class="flex items-center justify-between">
                 <span class="text-xs font-medium text-highlighted">Parcel #{{ idx + 1 }}</span>
@@ -327,7 +344,7 @@ async function onSubmitPallet(event: FormSubmitEvent<ReceiveCargoRequest>) {
                 />
               </div>
               <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <UInput v-model="item.sku" placeholder="SKU" size="sm" />
+                <UInput v-model="item.sku" placeholder="SKU" size="sm" class="font-mono" />
                 <UInput v-model="item.label" placeholder="Label" size="sm" />
                 <USelect
                   v-model="item.handlingClass"
@@ -337,24 +354,37 @@ async function onSubmitPallet(event: FormSubmitEvent<ReceiveCargoRequest>) {
                 />
               </div>
               <div class="grid grid-cols-4 gap-2">
-                <UInput v-model.number="item.weightKg" type="number" size="sm" placeholder="kg" />
-                <UInput v-model.number="item.lengthCm" type="number" size="sm" placeholder="L cm" />
-                <UInput v-model.number="item.widthCm" type="number" size="sm" placeholder="W cm" />
-                <UInput v-model.number="item.heightCm" type="number" size="sm" placeholder="H cm" />
+                <UFormField label="Weight (kg)" size="xs">
+                  <UInput v-model.number="item.weightKg" type="number" size="sm" class="font-mono w-full" />
+                </UFormField>
+                <UFormField label="L (cm)" size="xs">
+                  <UInput v-model.number="item.lengthCm" type="number" size="sm" class="font-mono w-full" />
+                </UFormField>
+                <UFormField label="W (cm)" size="xs">
+                  <UInput v-model.number="item.widthCm" type="number" size="sm" class="font-mono w-full" />
+                </UFormField>
+                <UFormField label="H (cm)" size="xs">
+                  <UInput v-model.number="item.heightCm" type="number" size="sm" class="font-mono w-full" />
+                </UFormField>
               </div>
             </div>
           </div>
-
-          <div class="flex justify-end gap-2 pt-2">
-            <UButton color="neutral" variant="ghost" @click="open = false">
-              Cancel
-            </UButton>
-            <UButton type="submit" icon="i-lucide-layers" :loading="submitting">
-              Store Composite Pallet
-            </UButton>
-          </div>
         </UForm>
       </div>
+    </template>
+
+    <template #footer="{ close }">
+      <UButton color="neutral" variant="outline" @click="close">
+        Cancel
+      </UButton>
+      <UButton
+        type="submit"
+        :form="cargoKind === 'PARCEL' ? 'receive-parcel-form' : 'receive-pallet-form'"
+        :icon="cargoKind === 'PARCEL' ? 'i-lucide-package-plus' : 'i-lucide-layers'"
+        :loading="submitting"
+      >
+        {{ cargoKind === 'PARCEL' ? 'Store Parcel' : 'Store Composite Pallet' }}
+      </UButton>
     </template>
   </UModal>
 </template>

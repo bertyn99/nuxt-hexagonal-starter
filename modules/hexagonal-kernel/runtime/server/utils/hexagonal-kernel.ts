@@ -55,8 +55,7 @@ function resolveKernelConfig(): HexagonalOptionsDto {
       inspector: raw.inspector ?? DEFAULT_CONFIG.inspector,
       sqlitePath: raw.sqlitePath ?? DEFAULT_CONFIG.sqlitePath,
     }
-  }
-  catch (error: unknown) {
+  } catch (error: unknown) {
     if (!process.env.VITEST) {
       log.warn({
         component: 'hexagonal-kernel',
@@ -68,7 +67,9 @@ function resolveKernelConfig(): HexagonalOptionsDto {
   }
 }
 
-export function createHexagonalKernel(overrideConfig?: Partial<HexagonalOptionsDto>): HexagonalKernelRuntime {
+export function createHexagonalKernel(
+  overrideConfig?: Partial<HexagonalOptionsDto>,
+): HexagonalKernelRuntime {
   const base = resolveKernelConfig()
   const config: HexagonalOptionsDto = { ...base, ...overrideConfig }
 
@@ -77,11 +78,12 @@ export function createHexagonalKernel(overrideConfig?: Partial<HexagonalOptionsD
   const eventBus = new InProcessEventBusAdapter(300)
   const traceCollector = new InMemoryTraceCollectorAdapter(50)
 
-  const sqliteDriver = config.persistence === 'drizzle-sqlite'
-    ? new DrizzleSqliteDriver(
-        config.sqlitePath === ':memory:' ? ':memory:' : resolve(process.cwd(), config.sqlitePath),
-      )
-    : null
+  const sqliteDriver =
+    config.persistence === 'drizzle-sqlite'
+      ? new DrizzleSqliteDriver(
+          config.sqlitePath === ':memory:' ? ':memory:' : resolve(process.cwd(), config.sqlitePath),
+        )
+      : null
 
   const auditLog: AuditLogPort = sqliteDriver
     ? new DrizzleSqliteAuditLogAdapter(sqliteDriver)
@@ -122,15 +124,15 @@ export function createHexagonalKernel(overrideConfig?: Partial<HexagonalOptionsD
       return {
         config,
         adapters: {
-          persistence: config.persistence === 'drizzle-sqlite'
-            ? `DrizzleSqliteAdapter (${config.sqlitePath})`
-            : 'InMemoryRepositoryAdapter',
-          carrier: config.carrier === 'simulated'
-            ? 'SimulatedCarrierGatewayAdapter'
-            : 'WebhookConsoleCarrierAdapter',
-          clock: config.clock === 'virtual'
-            ? 'VirtualClockAdapter'
-            : 'SystemClockAdapter',
+          persistence:
+            config.persistence === 'drizzle-sqlite'
+              ? `DrizzleSqliteAdapter (${config.sqlitePath})`
+              : 'InMemoryRepositoryAdapter',
+          carrier:
+            config.carrier === 'simulated'
+              ? 'SimulatedCarrierGatewayAdapter'
+              : 'WebhookConsoleCarrierAdapter',
+          clock: config.clock === 'virtual' ? 'VirtualClockAdapter' : 'SystemClockAdapter',
           eventBus: 'InProcessEventBusAdapter',
           auditLog: sqliteDriver ? 'DrizzleSqliteAuditLogAdapter' : 'InMemoryAuditLogAdapter',
         },
@@ -170,7 +172,9 @@ export function useHexagonalKernel(): HexagonalKernelRuntime {
   return kernelInstance
 }
 
-export function resetHexagonalKernel(overrideConfig?: Partial<HexagonalOptionsDto>): HexagonalKernelRuntime {
+export function resetHexagonalKernel(
+  overrideConfig?: Partial<HexagonalOptionsDto>,
+): HexagonalKernelRuntime {
   kernelInstance?.shutdown()
   kernelInstance = createHexagonalKernel(overrideConfig)
   return kernelInstance

@@ -2,7 +2,10 @@ import type { ClockPort } from '../../../../hexagonal-kernel/core/application/po
 import type { UseCase } from '../../../../hexagonal-kernel/core/application/use-case'
 import { mapShipmentToView } from '../dtos/delivery.dtos'
 import type { ShipmentView } from '../dtos/delivery.dtos'
-import type { ShipmentFilter, ShipmentRepositoryPort } from '../ports/outbound/shipment-repository.port'
+import type {
+  ShipmentFilter,
+  ShipmentRepositoryPort,
+} from '../ports/outbound/shipment-repository.port'
 
 export class ListShipmentsQuery implements UseCase<ShipmentFilter | undefined, ShipmentView[]> {
   readonly name = 'ListShipmentsQuery'

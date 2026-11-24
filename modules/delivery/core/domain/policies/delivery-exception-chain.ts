@@ -1,7 +1,7 @@
-export type DeliveryExceptionResolutionAction
-  = | 'SCHEDULE_NEXT_DAY_RETRY'
-    | 'HOLD_AT_LOCAL_HUB'
-    | 'RETURN_TO_WAREHOUSE'
+export type DeliveryExceptionResolutionAction =
+  | 'SCHEDULE_NEXT_DAY_RETRY'
+  | 'HOLD_AT_LOCAL_HUB'
+  | 'RETURN_TO_WAREHOUSE'
 
 export interface DeliveryExceptionContext {
   readonly attemptNumber: number
@@ -42,7 +42,9 @@ abstract class BaseDeliveryExceptionHandler implements DeliveryExceptionHandler 
     }
   }
 
-  protected abstract tryHandle(context: DeliveryExceptionContext): DeliveryExceptionResolution | null
+  protected abstract tryHandle(
+    context: DeliveryExceptionContext,
+  ): DeliveryExceptionResolution | null
 }
 
 export class FirstAttemptRetryHandler extends BaseDeliveryExceptionHandler {

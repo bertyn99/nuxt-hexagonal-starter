@@ -14,7 +14,7 @@ const clockActionSchema = z.discriminatedUnion('action', [
   }),
 ])
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const log = useLogger(event)
   try {
     const kernel = useHexagonalKernel()
@@ -30,12 +30,13 @@ export default defineEventHandler(async (event) => {
     }
 
     const body = await parseBodyWithSchema(event, clockActionSchema)
-    const offsetBefore = Number((kernel.controllableClock.getOffsetMs() / (60 * 60 * 1000)).toFixed(2))
+    const offsetBefore = Number(
+      (kernel.controllableClock.getOffsetMs() / (60 * 60 * 1000)).toFixed(2),
+    )
     if (body.action === 'advance') {
       kernel.controllableClock.advanceByHours(body.hours)
       log.set({ clock: { action: 'advance', hours: body.hours } })
-    }
-    else {
+    } else {
       kernel.controllableClock.reset()
       log.set({ clock: { action: 'reset' } })
     }
@@ -58,8 +59,7 @@ export default defineEventHandler(async (event) => {
       },
     })
     return snapshot
-  }
-  catch (error: unknown) {
+  } catch (error: unknown) {
     mapDomainErrorToHttp(error, event)
   }
 })

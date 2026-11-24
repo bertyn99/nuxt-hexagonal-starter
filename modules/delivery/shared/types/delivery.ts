@@ -1,14 +1,14 @@
 export type DeliveryHandlingClassDto = 'STANDARD' | 'FRAGILE' | 'COLD_CHAIN' | 'HAZMAT'
 export type CarrierModeDto = 'STANDARD_GROUND' | 'EXPRESS_AIR' | 'COLD_CHAIN_COURIER'
-export type ShipmentStateDto
-  = | 'PendingDispatch'
-    | 'Dispatched'
-    | 'InTransit'
-    | 'OutForDelivery'
-    | 'DeliveryAttemptFailed'
-    | 'Delivered'
-    | 'ReturnedToWarehouse'
-    | 'Cancelled'
+export type ShipmentStateDto =
+  | 'PendingDispatch'
+  | 'Dispatched'
+  | 'InTransit'
+  | 'OutForDelivery'
+  | 'DeliveryAttemptFailed'
+  | 'Delivered'
+  | 'ReturnedToWarehouse'
+  | 'Cancelled'
 
 export interface CargoSummaryDto {
   cargoId: string

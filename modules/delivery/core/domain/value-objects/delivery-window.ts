@@ -13,7 +13,11 @@ export class DeliveryWindow extends ValueObject<DeliveryWindowProps> {
 
   static fromStartAndHours(start: Date, estimatedHours: number): DeliveryWindow {
     if (!Number.isFinite(estimatedHours) || estimatedHours <= 0) {
-      throw new ValidationDomainError('INVALID_DELIVERY_WINDOW', 'Estimated hours must be positive.', { estimatedHours })
+      throw new ValidationDomainError(
+        'INVALID_DELIVERY_WINDOW',
+        'Estimated hours must be positive.',
+        { estimatedHours },
+      )
     }
     const deadline = new Date(start.getTime() + estimatedHours * 60 * 60 * 1000)
     return new DeliveryWindow(deadline.toISOString(), estimatedHours)
@@ -22,7 +26,10 @@ export class DeliveryWindow extends ValueObject<DeliveryWindowProps> {
   static fromIso(promisedByIso: string, estimatedHours: number): DeliveryWindow {
     const parsed = new Date(promisedByIso)
     if (Number.isNaN(parsed.getTime())) {
-      throw new ValidationDomainError('INVALID_DELIVERY_WINDOW', `Invalid promisedBy ISO date "${promisedByIso}".`)
+      throw new ValidationDomainError(
+        'INVALID_DELIVERY_WINDOW',
+        `Invalid promisedBy ISO date "${promisedByIso}".`,
+      )
     }
     return new DeliveryWindow(parsed.toISOString(), estimatedHours)
   }

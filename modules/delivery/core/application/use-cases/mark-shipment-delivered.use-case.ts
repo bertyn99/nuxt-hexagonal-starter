@@ -11,7 +11,10 @@ export interface MarkShipmentDeliveredInput {
   readonly recipientNote?: string
 }
 
-export class MarkShipmentDeliveredUseCase implements UseCase<MarkShipmentDeliveredInput, ShipmentView> {
+export class MarkShipmentDeliveredUseCase implements UseCase<
+  MarkShipmentDeliveredInput,
+  ShipmentView
+> {
   readonly name = 'MarkShipmentDeliveredUseCase'
   readonly boundedContext = 'delivery'
 
