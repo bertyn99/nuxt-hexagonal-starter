@@ -1,23 +1,37 @@
-import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
-import { mapDomainErrorToHttp } from '../../../../../../hexagonal-kernel/runtime/server/utils/http-error-mapper'
+import { useLogger } from 'evlog'
+import { defineEventHandler, readBody } from 'h3'
+import {
+  mapDomainErrorToHttp,
+  requireRouterParam,
+} from '../../../../../../hexagonal-kernel/runtime/server/utils/http-error-mapper'
 import { advanceTransitRequestSchema } from '../../../../../shared/schemas/delivery.schema'
 import { useDeliveryModule } from '../../../utils/delivery-container'
 
 export default defineEventHandler(async (event) => {
+  const log = useLogger(event)
   try {
-    const shipmentId = getRouterParam(event, 'id')
-    if (!shipmentId) {
-      throw createError({ statusCode: 400, statusMessage: 'Missing shipment id' })
-    }
+    const shipmentId = requireRouterParam(event, 'id', 'shipment id')
     const raw = await readBody(event).catch(() => undefined)
     const parsed = advanceTransitRequestSchema.safeParse(raw)
+    const locationNote = parsed.success ? parsed.data?.locationNote : undefined
+
+    log.set({ shipment: { action: 'advance_transit', id: shipmentId } })
+
     const delivery = await useDeliveryModule()
-    return await delivery.advanceTransit.execute({
+    const updated = await delivery.advanceTransit.execute({
       shipmentId,
-      locationNote: parsed.success ? parsed.data?.locationNote : undefined,
+      locationNote,
     })
+
+    log.set({
+      shipment: {
+        trackingNumber: updated.trackingNumber,
+        state: updated.state,
+      },
+    })
+    return updated
   }
   catch (error: unknown) {
-    mapDomainErrorToHttp(error)
+    mapDomainErrorToHttp(error, event)
   }
 })

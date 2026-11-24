@@ -1,6 +1,7 @@
 # Nuxt dev/build outputs
 .output
 .data
+.evlog
 .nuxt
 .nitro
 .cache
@@ -12,6 +13,7 @@ node_modules
 # Logs
 logs
 *.log
+*.tsbuildinfo
 
 # Misc
 .DS_Store

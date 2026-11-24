@@ -1,3 +1,4 @@
+import { useLogger } from 'evlog'
 import { defineEventHandler } from 'h3'
 import {
   mapDomainErrorToHttp,
@@ -7,12 +8,30 @@ import { quoteShipmentRequestSchema } from '../../../../shared/schemas/delivery.
 import { useDeliveryModule } from '../../utils/delivery-container'
 
 export default defineEventHandler(async (event) => {
+  const log = useLogger(event)
   try {
     const payload = await parseBodyWithSchema(event, quoteShipmentRequestSchema)
+    log.set({
+      quote: {
+        carrierMode: payload.carrierMode,
+        handlingClass: payload.handlingClass,
+        weightKg: payload.weightKg,
+        volumeM3: payload.volumeM3,
+      },
+    })
+
     const delivery = await useDeliveryModule()
-    return await delivery.quoteShipment.execute(payload)
+    const quote = await delivery.quoteShipment.execute(payload)
+
+    log.set({
+      quote: {
+        costCents: quote.costCents,
+        estimatedHours: quote.estimatedHours,
+      },
+    })
+    return quote
   }
   catch (error: unknown) {
-    mapDomainErrorToHttp(error)
+    mapDomainErrorToHttp(error, event)
   }
 })

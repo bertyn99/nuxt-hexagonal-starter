@@ -8,10 +8,26 @@ const { shipments, fetchShipments } = useDeliveries()
 
 onMounted(() => {
   if (bins.value.length === 0) {
-    fetchWarehouse().catch(() => {})
+    fetchWarehouse().catch((err: unknown) => {
+      const parsed = parseError(err)
+      log.error({
+        action: 'bootstrap_warehouse_failed',
+        status: parsed.status,
+        message: parsed.message,
+        why: parsed.why,
+      })
+    })
   }
   if (shipments.value.length === 0) {
-    fetchShipments().catch(() => {})
+    fetchShipments().catch((err: unknown) => {
+      const parsed = parseError(err)
+      log.error({
+        action: 'bootstrap_deliveries_failed',
+        status: parsed.status,
+        message: parsed.message,
+        why: parsed.why,
+      })
+    })
   }
 })
 

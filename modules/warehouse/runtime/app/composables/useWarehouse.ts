@@ -5,6 +5,15 @@ import type {
 } from '../../../shared/types/warehouse'
 import type { ReceiveCargoRequest } from '../../../shared/schemas/warehouse.schema'
 
+function formatClientError(err: unknown, fallbackMessage: string) {
+  const parsed = parseError(err)
+  const code = parsed.code ?? (typeof parsed.data?.code === 'string' ? parsed.data.code : 'DOMAIN_RULE_VIOLATION')
+  const details = [parsed.why ?? parsed.message ?? fallbackMessage, parsed.fix ? `Fix: ${parsed.fix}` : null]
+    .filter(Boolean)
+    .join(' — ')
+  return { parsed, code, details }
+}
+
 export function useWarehouse() {
   const toast = useToast()
 
@@ -45,12 +54,17 @@ export function useWarehouse() {
       return res
     }
     catch (err: unknown) {
-      const fetchErr = err as { data?: { statusMessage?: string, data?: { code?: string } }, statusMessage?: string, message?: string }
-      const code = fetchErr?.data?.data?.code ?? 'DOMAIN_RULE_VIOLATION'
-      const msg = fetchErr?.data?.statusMessage ?? fetchErr?.statusMessage ?? fetchErr?.message ?? 'Failed to store cargo'
+      const { parsed, code, details } = formatClientError(err, 'Failed to store cargo')
+      log.error({
+        action: 'warehouse_receive_cargo_failed',
+        code,
+        status: parsed.status,
+        binId: payload.binId,
+        sku: payload.sku,
+      })
       toast.add({
         title: `Storage Rejected (${code})`,
-        description: msg,
+        description: details,
         color: 'error',
         icon: 'i-lucide-shield-alert',
       })
@@ -74,10 +88,16 @@ export function useWarehouse() {
       return res
     }
     catch (err: unknown) {
-      const fetchErr = err as { data?: { statusMessage?: string }, message?: string }
+      const { parsed, code, details } = formatClientError(err, 'Unable to release cargo')
+      log.error({
+        action: 'warehouse_release_cargo_failed',
+        code,
+        status: parsed.status,
+        cargoId,
+      })
       toast.add({
-        title: 'Release failed',
-        description: fetchErr?.data?.statusMessage ?? fetchErr?.message ?? 'Unable to release cargo',
+        title: `Release failed (${code})`,
+        description: details,
         color: 'error',
       })
       throw err

@@ -1,3 +1,4 @@
+import { log } from 'evlog'
 import type {
   CarrierDispatchReceipt,
   CarrierDispatchRequest,
@@ -12,9 +13,15 @@ export class WebhookConsoleCarrierGatewayAdapter implements CarrierGatewayPort {
   async dispatchShipment(request: CarrierDispatchRequest): Promise<CarrierDispatchReceipt> {
     webhookSeq += 1
     const carrierReference = `WHK-${webhookSeq.toString().padStart(5, '0')}`
-    console.info(
-      `[${this.adapterName}] Dispatched ${request.trackingNumber} (${request.carrierMode}) -> ${request.destination} [${carrierReference}]`,
-    )
+    log.info({
+      carrier: {
+        adapter: this.adapterName,
+        trackingNumber: request.trackingNumber,
+        mode: request.carrierMode,
+        destination: request.destination,
+        reference: carrierReference,
+      },
+    })
     return {
       carrierReference,
       adapterName: this.adapterName,

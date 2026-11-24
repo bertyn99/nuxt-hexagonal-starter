@@ -8,24 +8,21 @@ import type {
 } from '../../../shared/types/delivery'
 import type { CreateShipmentRequest, QuoteShipmentRequest } from '../../../shared/schemas/delivery.schema'
 
+function formatClientError(err: unknown, fallbackMessage: string) {
+  const parsed = parseError(err)
+  const code = parsed.code ?? (typeof parsed.data?.code === 'string' ? parsed.data.code : 'DOMAIN_RULE_VIOLATION')
+  const details = [parsed.why ?? parsed.message ?? fallbackMessage, parsed.fix ? `Fix: ${parsed.fix}` : null]
+    .filter(Boolean)
+    .join(' — ')
+  return { parsed, code, details }
+}
+
 export function useDeliveries() {
   const toast = useToast()
 
   const shipments = useState<ShipmentDto[]>('delivery-shipments', () => [])
   const availableCargo = useState<AvailableCargoDto[]>('delivery-available-cargo', () => [])
   const loading = useState<boolean>('delivery-loading', () => false)
-
-  function extractError(err: unknown): { code: string, message: string } {
-    const e = err as {
-      data?: { statusMessage?: string, data?: { code?: string } }
-      statusMessage?: string
-      message?: string
-    }
-    return {
-      code: e?.data?.data?.code ?? 'DOMAIN_RULE_VIOLATION',
-      message: e?.data?.statusMessage ?? e?.statusMessage ?? e?.message ?? 'Operation failed',
-    }
-  }
 
   async function fetchShipments(filters?: {
     state?: ShipmentStateDto
@@ -75,10 +72,17 @@ export function useDeliveries() {
       return created
     }
     catch (err: unknown) {
-      const { code, message } = extractError(err)
+      const { parsed, code, details } = formatClientError(err, 'Failed to create shipment')
+      log.error({
+        action: 'delivery_create_shipment_failed',
+        code,
+        status: parsed.status,
+        cargoId: payload.cargoId,
+        carrierMode: payload.carrierMode,
+      })
       toast.add({
         title: `Shipment Rejected (${code})`,
-        description: message,
+        description: details,
         color: 'error',
         icon: 'i-lucide-shield-alert',
       })
@@ -121,10 +125,17 @@ export function useDeliveries() {
       return res
     }
     catch (err: unknown) {
-      const { code, message } = extractError(err)
+      const { parsed, code, details } = formatClientError(err, 'Transition failed')
+      log.error({
+        action: 'delivery_transition_failed',
+        endpoint,
+        shipmentId,
+        code,
+        status: parsed.status,
+      })
       toast.add({
         title: `Domain Guard Blocked Action (${code})`,
-        description: message,
+        description: details,
         color: 'error',
         icon: 'i-lucide-shield-ban',
       })

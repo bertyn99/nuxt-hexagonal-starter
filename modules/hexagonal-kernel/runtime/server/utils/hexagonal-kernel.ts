@@ -1,4 +1,5 @@
 import { resolve } from 'node:path'
+import { log } from 'evlog'
 import { registerAuditLogSubscriber } from '../../../core/application/audit-log.subscriber'
 import type { AuditLogPort } from '../../../core/application/ports/audit-log.port'
 import type { ClockPort, ControllableClockPort } from '../../../core/application/ports/clock.port'
@@ -55,7 +56,14 @@ function resolveKernelConfig(): HexagonalOptionsDto {
       sqlitePath: raw.sqlitePath ?? DEFAULT_CONFIG.sqlitePath,
     }
   }
-  catch {
+  catch (error: unknown) {
+    if (!process.env.VITEST) {
+      log.warn({
+        component: 'hexagonal-kernel',
+        action: 'resolve_config_fallback',
+        reason: error instanceof Error ? error.message : String(error),
+      })
+    }
     return { ...DEFAULT_CONFIG }
   }
 }

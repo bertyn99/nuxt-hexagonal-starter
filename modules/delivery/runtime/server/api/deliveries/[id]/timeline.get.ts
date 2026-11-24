@@ -1,17 +1,30 @@
-import { createError, defineEventHandler, getRouterParam } from 'h3'
-import { mapDomainErrorToHttp } from '../../../../../../hexagonal-kernel/runtime/server/utils/http-error-mapper'
+import { useLogger } from 'evlog'
+import { defineEventHandler } from 'h3'
+import {
+  mapDomainErrorToHttp,
+  requireRouterParam,
+} from '../../../../../../hexagonal-kernel/runtime/server/utils/http-error-mapper'
 import { useDeliveryModule } from '../../../utils/delivery-container'
 
 export default defineEventHandler(async (event) => {
+  const log = useLogger(event)
   try {
-    const shipmentId = getRouterParam(event, 'id')
-    if (!shipmentId) {
-      throw createError({ statusCode: 400, statusMessage: 'Missing shipment id' })
-    }
+    const shipmentId = requireRouterParam(event, 'id', 'shipment id')
+    log.set({ shipment: { action: 'get_timeline', id: shipmentId } })
+
     const delivery = await useDeliveryModule()
-    return await delivery.getTimeline.execute({ shipmentId })
+    const timeline = await delivery.getTimeline.execute({ shipmentId })
+
+    log.set({
+      shipment: {
+        trackingNumber: timeline.shipment.trackingNumber,
+        state: timeline.shipment.state,
+        eventCount: timeline.events.length,
+      },
+    })
+    return timeline
   }
   catch (error: unknown) {
-    mapDomainErrorToHttp(error)
+    mapDomainErrorToHttp(error, event)
   }
 })

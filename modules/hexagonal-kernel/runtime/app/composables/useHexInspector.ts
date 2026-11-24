@@ -1,5 +1,13 @@
 import type { InspectorSnapshotDto } from '../../../shared/types/inspector'
 
+function formatInspectorError(err: unknown, fallbackMessage: string) {
+  const parsed = parseError(err)
+  const details = [parsed.why ?? parsed.message ?? fallbackMessage, parsed.fix ? `Fix: ${parsed.fix}` : null]
+    .filter(Boolean)
+    .join(' — ')
+  return { parsed, details }
+}
+
 export function useHexInspector() {
   const isOpen = useState<boolean>('hex-inspector-open', () => false)
   const snapshot = useState<InspectorSnapshotDto | null>('hex-inspector-snapshot', () => null)
@@ -10,6 +18,11 @@ export function useHexInspector() {
     loading.value = true
     try {
       snapshot.value = await $fetch<InspectorSnapshotDto>('/api/_hexagonal/inspector')
+    }
+    catch (err: unknown) {
+      const { parsed, details } = formatInspectorError(err, 'Failed to load inspector snapshot')
+      log.error({ action: 'inspector_refresh_failed', status: parsed.status, message: parsed.message })
+      toast.add({ title: 'Inspector refresh failed', description: details, color: 'error' })
     }
     finally {
       loading.value = false
@@ -31,10 +44,9 @@ export function useHexInspector() {
       })
     }
     catch (err: unknown) {
-      const msg = (err as { data?: { statusMessage?: string }, message?: string })?.data?.statusMessage
-        ?? (err as Error)?.message
-        ?? 'Failed to advance clock'
-      toast.add({ title: 'Clock error', description: msg, color: 'error' })
+      const { parsed, details } = formatInspectorError(err, 'Failed to advance clock')
+      log.error({ action: 'inspector_advance_clock_failed', hours, status: parsed.status, code: parsed.code })
+      toast.add({ title: 'Clock error', description: details, color: 'error' })
     }
     finally {
       loading.value = false
@@ -54,6 +66,11 @@ export function useHexInspector() {
         color: 'neutral',
         icon: 'i-lucide-rotate-ccw',
       })
+    }
+    catch (err: unknown) {
+      const { parsed, details } = formatInspectorError(err, 'Failed to reset clock')
+      log.error({ action: 'inspector_reset_clock_failed', status: parsed.status, code: parsed.code })
+      toast.add({ title: 'Clock reset failed', description: details, color: 'error' })
     }
     finally {
       loading.value = false
@@ -75,6 +92,11 @@ export function useHexInspector() {
         color: snapshot.value.faults.outageEnabled ? 'warning' : 'success',
         icon: 'i-lucide-zap',
       })
+    }
+    catch (err: unknown) {
+      const { parsed, details } = formatInspectorError(err, 'Failed to update carrier faults')
+      log.error({ action: 'inspector_update_faults_failed', status: parsed.status, code: parsed.code })
+      toast.add({ title: 'Fault update failed', description: details, color: 'error' })
     }
     finally {
       loading.value = false
@@ -100,10 +122,9 @@ export function useHexInspector() {
       return result
     }
     catch (err: unknown) {
-      const msg = (err as { data?: { statusMessage?: string }, message?: string })?.data?.statusMessage
-        ?? (err as Error)?.message
-        ?? 'SLA evaluation failed'
-      toast.add({ title: 'SLA Evaluation Failed', description: msg, color: 'error' })
+      const { parsed, details } = formatInspectorError(err, 'SLA evaluation failed')
+      log.error({ action: 'inspector_evaluate_slas_failed', status: parsed.status, code: parsed.code })
+      toast.add({ title: 'SLA Evaluation Failed', description: details, color: 'error' })
       return null
     }
     finally {

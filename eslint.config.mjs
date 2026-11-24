@@ -14,6 +14,8 @@ const FORBIDDEN_CORE_PACKAGES = [
   'drizzle-orm/*',
   'better-sqlite3',
   'zod',
+  'evlog',
+  'evlog/*',
   '#imports',
   '#app',
   '#nitro',

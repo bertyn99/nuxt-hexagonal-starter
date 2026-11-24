@@ -1,7 +1,8 @@
-import { createError, defineEventHandler } from 'h3'
+import { createError, useLogger } from 'evlog'
+import { defineEventHandler } from 'h3'
 import { z } from 'zod'
 import { useHexagonalKernel } from '../../utils/hexagonal-kernel'
-import { parseBodyWithSchema } from '../../utils/http-error-mapper'
+import { mapDomainErrorToHttp, parseBodyWithSchema } from '../../utils/http-error-mapper'
 
 const clockActionSchema = z.discriminatedUnion('action', [
   z.object({
@@ -14,22 +15,51 @@ const clockActionSchema = z.discriminatedUnion('action', [
 ])
 
 export default defineEventHandler(async (event) => {
-  const kernel = useHexagonalKernel()
-  if (!kernel.controllableClock) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Virtual clock is not active. Set hexagonal.clock = "virtual" in nuxt.config.ts.',
-      data: { code: 'CLOCK_NOT_CONTROLLABLE' },
+  const log = useLogger(event)
+  try {
+    const kernel = useHexagonalKernel()
+    if (!kernel.controllableClock) {
+      throw createError({
+        code: 'CLOCK_NOT_CONTROLLABLE',
+        message: 'Virtual clock is not active',
+        status: 400,
+        why: `Active clock adapter is "${kernel.clock.mode}" instead of "virtual"`,
+        fix: 'Set hexagonal.clock = "virtual" in nuxt.config.ts to control simulated time',
+        data: { code: 'CLOCK_NOT_CONTROLLABLE' },
+      })
+    }
+
+    const body = await parseBodyWithSchema(event, clockActionSchema)
+    const offsetBefore = Number((kernel.controllableClock.getOffsetMs() / (60 * 60 * 1000)).toFixed(2))
+    if (body.action === 'advance') {
+      kernel.controllableClock.advanceByHours(body.hours)
+      log.set({ clock: { action: 'advance', hours: body.hours } })
+    }
+    else {
+      kernel.controllableClock.reset()
+      log.set({ clock: { action: 'reset' } })
+    }
+
+    const snapshot = await kernel.getInspectorSnapshot()
+    log.set({
+      clock: {
+        currentTimeIso: snapshot.clock.currentTimeIso,
+        offsetHours: snapshot.clock.offsetHours,
+      },
     })
+    log.audit({
+      action: `hexagonal.clock.${body.action}`,
+      actor: { type: 'system', id: 'operator' },
+      target: { type: 'clock', id: 'virtual-clock' },
+      outcome: 'success',
+      changes: {
+        before: { offsetHours: offsetBefore },
+        after: { offsetHours: snapshot.clock.offsetHours },
+      },
+    })
+    return snapshot
   }
-
-  const body = await parseBodyWithSchema(event, clockActionSchema)
-  if (body.action === 'advance') {
-    kernel.controllableClock.advanceByHours(body.hours)
+  catch (error: unknown) {
+    mapDomainErrorToHttp(error, event)
   }
-  else {
-    kernel.controllableClock.reset()
-  }
-
-  return await kernel.getInspectorSnapshot()
 })
