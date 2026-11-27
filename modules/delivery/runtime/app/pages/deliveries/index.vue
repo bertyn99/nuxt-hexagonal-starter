@@ -394,7 +394,7 @@ async function handleAction(shipment: ShipmentDto, action: ShipmentAction) {
             :data="filteredShipments"
             :columns="columns"
             :loading="loading"
-            :ui="{ th: 'px-2.5 py-2.5 text-xs whitespace-nowrap', td: 'px-2.5 py-2.5' }"
+            :ui="{ th: 'px-2 py-2 text-xs whitespace-nowrap', td: 'px-2 py-2' }"
           >
             <template #trackingNumber-cell="{ row }">
               <div class="space-y-0.5">

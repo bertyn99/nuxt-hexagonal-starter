@@ -19,7 +19,7 @@ export default defineEventHandler(async (event): Promise<AuthSessionDto> => {
     const userView = await auth.authenticateUser.execute(payload)
     const user = toAuthUserDto(userView)
 
-    await setUserSession(event, {
+    await replaceUserSession(event, {
       user,
       loggedInAt: new Date().toISOString(),
     })

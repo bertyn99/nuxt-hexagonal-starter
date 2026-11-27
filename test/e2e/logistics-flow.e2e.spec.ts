@@ -225,7 +225,33 @@ describe('End-to-End Logistics & RBAC Flow (Real Nitro HTTP + SSR)', async () =>
     expect(eventNames).toContain('ShipmentDispatched')
     expect(eventNames).toContain('DeliverySlaBreached')
 
-    // 10. Verify Architecture Inspector captured live traces & registered auth/warehouse/delivery modules
+    // 10. Verify switching persona or re-logging in replaces session roles (no defu array accumulation)
+    const switchToWarehouseRes = await fetch('/api/auth/switch-persona', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: adminCookie },
+      body: JSON.stringify({ userId: 'usr-warehouse' }),
+    })
+    expect(switchToWarehouseRes.status).toBe(200)
+    const switchedWarehouseCookie = extractCookieHeader(switchToWarehouseRes)
+    const switchedSession = await $fetch<{
+      authenticated: boolean
+      user: { id: string; roles: string[] } | null
+    }>('/api/auth/session', {
+      headers: { cookie: switchedWarehouseCookie },
+    })
+    expect(switchedSession.authenticated).toBe(true)
+    expect(switchedSession.user?.id).toBe('usr-warehouse')
+    expect(switchedSession.user?.roles).toEqual(['warehouse_operator'])
+
+    // Switched warehouse operator must NOT retain admin permissions on TMS or Inspector
+    const switchedClockRes = await fetch('/api/_hexagonal/clock', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: switchedWarehouseCookie },
+      body: JSON.stringify({ action: 'advance', hours: 2 }),
+    })
+    expect(switchedClockRes.status).toBe(403)
+
+    // 11. Verify Architecture Inspector captured live traces & registered auth/warehouse/delivery modules
     const inspector = await $fetch<InspectorSnapshotDto>('/api/_hexagonal/inspector')
     expect(inspector.traces.length).toBeGreaterThan(0)
     expect(

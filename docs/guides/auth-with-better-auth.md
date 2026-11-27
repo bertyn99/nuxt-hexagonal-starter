@@ -4,18 +4,18 @@ This template ships with **`nuxt-auth-utils` + `nuxt-authorization`** as its wor
 
 When your application needs **database-backed sessions, OAuth/SSO providers, Passkeys, 2FA, or multi-tenant Organizations**, **[Better Auth](https://www.better-auth.com/)** is an excellent drop-in replacement.
 
-Because all business logic depends strictly on the kernel's pure `Actor`, `ExecutionContext`, and per-context domain access policies, **swapping to Better Auth touches zero files in `hexagonal-kernel/core/`, `warehouse/core/`, or `delivery/core/`.**
+Because all business logic and Nitro routes depend strictly on the kernel's `Actor`, `ExecutionContext`, `actor-context.ts`, and per-context domain access policies, **swapping to Better Auth touches zero files in `modules/hexagonal-kernel/`, `modules/warehouse/`, or `modules/delivery/`.**
 
 ---
 
 ## What Stays Untouched vs What Changes
 
-| Layer                                            | Changes?      | Why                                                                                                                          |
-| ------------------------------------------------ | ------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `modules/hexagonal-kernel/core/`                 | **No**        | `Actor`, `ExecutionContext`, `UnauthorizedError`, `ForbiddenError`, `AuthorizingUseCaseDecorator` are provider-agnostic.     |
-| `modules/warehouse/` & `modules/delivery/`       | **No**        | Pure RBAC policies (`canReceiveWarehouseCargo`, `canCreateShipment`) and `AuthorizingUseCaseDecorator` only inspect `Actor`. |
-| `modules/*/shared/abilities/`                    | **No**        | `nuxt-authorization` abilities wrap the pure domain policies and only depend on `resolveClientUser` / `resolveServerUser`.   |
-| `modules/auth/core/infrastructure/` & `runtime/` | **Swap here** | Replace `nuxt-auth-utils` session handling with `better-auth`.                                                               |
+| Layer                                            | Changes?      | Why                                                                                                                                                      |
+| ------------------------------------------------ | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `modules/hexagonal-kernel/`                      | **No**        | `Actor`, `ExecutionContext`, `AuthorizingUseCaseDecorator`, and `actor-context.ts` (`registerActorResolver`) are completely provider-agnostic.           |
+| `modules/warehouse/` & `modules/delivery/`       | **No**        | Pure RBAC policies, `AuthorizingUseCaseDecorator`, and Nitro routes only depend on `hexagonal-kernel`'s `resolveExecutionContext()` and `Actor`.         |
+| `modules/*/shared/abilities/`                    | **No**        | `nuxt-authorization` abilities wrap the pure domain policies and only depend on `resolveClientUser` / `resolveServerUser`.                               |
+| `modules/auth/core/infrastructure/` & `runtime/` | **Swap here** | Replace `nuxt-auth-utils` session handling with `better-auth` and register its actor resolver in `modules/auth/runtime/server/plugins/authorization.ts`. |
 
 ---
 
@@ -137,9 +137,11 @@ import { defineNitroPlugin } from 'nitropack/runtime'
 import { isAuthenticatedActor } from '../../../../hexagonal-kernel/core/domain/actor'
 import { registerActorResolver } from '../../../../hexagonal-kernel/runtime/server/utils/actor-context'
 import { resolveAuthActorFromEvent } from '../utils/auth-context'
+import { registerAuthModuleMetadata } from '../utils/auth-context-container'
 
 export default defineNitroPlugin(nitroApp => {
   registerActorResolver(resolveAuthActorFromEvent)
+  registerAuthModuleMetadata('BetterAuthDrizzleAdapter')
 
   nitroApp.hooks.hook('request', event => {
     event.context.$authorization = {

@@ -12,8 +12,8 @@ Many "hexagonal" examples define repository interfaces (`*RepositoryPort`) but s
 
 1. Every bounded context implements **two full persistence adapter families** behind an **Abstract Factory** (`*PersistenceAdapterFactory`), selectable via `nuxt.config.ts` (`hexagonal.persistence: 'in-memory' | 'drizzle-sqlite'`):
    - `InMemory*Repository`: Deep-clones aggregate snapshots on every `save()` and `find*()` to match database isolation semantics.
-   - `DrizzleSqlite*Repository`: Persists aggregates into module-owned SQLite tables via Drizzle ORM (`better-sqlite3`).
-2. **Port Conformance Contract Tests** (`test/integration/`) run the **exact same Vitest behavioral suite** against both `InMemory` and `DrizzleSqlite` adapters for `WarehouseBinRepositoryPort` and `ShipmentRepositoryPort`.
+   - `DrizzleSqlite*Repository`: Persists aggregates into module-owned SQLite tables via Drizzle ORM (`better-sqlite3`), self-bootstrapping its own table schema via `ensureSchema()`.
+2. **Port Conformance Contract Tests** (`test/integration/`) run the **exact same Vitest behavioral suite** against both `InMemory` and `DrizzleSqlite` adapters for `UserAccountRepositoryPort`, `WarehouseBinRepositoryPort`, and `ShipmentRepositoryPort`.
 
 ## Consequences
 
