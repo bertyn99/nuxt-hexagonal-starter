@@ -1,3 +1,5 @@
+import { AuthorizingUseCaseDecorator } from '../../../../hexagonal-kernel/core/application/decorators/authorizing-use-case.decorator'
+import type { AuthorizationPolicySpec } from '../../../../hexagonal-kernel/core/application/decorators/authorizing-use-case.decorator'
 import { TracingUseCaseDecorator } from '../../../../hexagonal-kernel/core/application/decorators/tracing-use-case.decorator'
 import type { AuditLogPort } from '../../../../hexagonal-kernel/core/application/ports/audit-log.port'
 import type { ClockPort } from '../../../../hexagonal-kernel/core/application/ports/clock.port'
@@ -10,6 +12,11 @@ import type {
   CarrierFaultStateDto,
   PersistenceMode,
 } from '../../../../hexagonal-kernel/shared/types/inspector'
+import {
+  canCreateShipment,
+  canEvaluateDeliverySlas,
+  canManageShipmentLifecycle,
+} from '../../domain/policies/delivery-access.policy'
 import {
   AdvanceShipmentTransitUseCase,
   CancelShipmentUseCase,
@@ -102,11 +109,14 @@ export function createDeliveryContainer(deps: {
     drivingAdapter: string,
     domainComponent: string,
     drivenAdapter = adapterName,
+    authPolicy?: AuthorizationPolicySpec<TIn>,
   ): UseCase<TIn, TOut> => {
-    return new TracingUseCaseDecorator(useCase, deps.traceCollector, deps.clock, deps.eventBus, {
+    const guarded = authPolicy ? new AuthorizingUseCaseDecorator(useCase, authPolicy) : useCase
+    return new TracingUseCaseDecorator(guarded, deps.traceCollector, deps.clock, deps.eventBus, {
       drivingAdapter,
       domainComponent,
       drivenAdapter,
+      authorized: Boolean(authPolicy),
     })
   }
 
@@ -127,6 +137,11 @@ export function createDeliveryContainer(deps: {
     'POST /api/deliveries',
     'Shipment.create() + CarrierStrategy',
     `${adapterName} + LocalWarehouseStockAdapter (ACL)`,
+    {
+      policyName: 'delivery:shipment:create',
+      requiredRolesDescription: 'dispatcher or admin',
+      check: actor => canCreateShipment(actor),
+    },
   )
 
   const dispatchShipment = wrap(
@@ -134,36 +149,71 @@ export function createDeliveryContainer(deps: {
     'POST /api/deliveries/:id/dispatch',
     'ShipmentState: PendingDispatch -> Dispatched',
     `${adapterName} + ${carrierGateway.adapterName}`,
+    {
+      policyName: 'delivery:shipment:dispatch',
+      requiredRolesDescription: 'dispatcher or admin',
+      check: actor => canManageShipmentLifecycle(actor),
+    },
   )
 
   const advanceTransit = wrap(
     new AdvanceShipmentTransitUseCase(shipmentRepository, deps.eventBus, deps.clock),
     'POST /api/deliveries/:id/advance',
     'ShipmentState: Dispatched -> InTransit -> OutForDelivery',
+    adapterName,
+    {
+      policyName: 'delivery:shipment:advance',
+      requiredRolesDescription: 'dispatcher or admin',
+      check: actor => canManageShipmentLifecycle(actor),
+    },
   )
 
   const markDelivered = wrap(
     new MarkShipmentDeliveredUseCase(shipmentRepository, deps.eventBus, deps.clock),
     'POST /api/deliveries/:id/deliver',
     'ShipmentState: OutForDelivery -> Delivered',
+    adapterName,
+    {
+      policyName: 'delivery:shipment:deliver',
+      requiredRolesDescription: 'dispatcher or admin',
+      check: actor => canManageShipmentLifecycle(actor),
+    },
   )
 
   const recordAttemptFailure = wrap(
     new RecordDeliveryAttemptFailureUseCase(shipmentRepository, deps.eventBus, deps.clock),
     'POST /api/deliveries/:id/fail-attempt',
     'DeliveryExceptionChain (Chain of Responsibility)',
+    adapterName,
+    {
+      policyName: 'delivery:shipment:fail-attempt',
+      requiredRolesDescription: 'dispatcher or admin',
+      check: actor => canManageShipmentLifecycle(actor),
+    },
   )
 
   const cancelShipment = wrap(
     new CancelShipmentUseCase(shipmentRepository, deps.eventBus, deps.clock),
     'POST /api/deliveries/:id/cancel',
     'ShipmentState.cancel() Guard',
+    adapterName,
+    {
+      policyName: 'delivery:shipment:cancel',
+      requiredRolesDescription: 'dispatcher or admin',
+      check: actor => canManageShipmentLifecycle(actor),
+    },
   )
 
   const evaluateSlas = wrap(
     new EvaluateDeliverySlasUseCase(shipmentRepository, deps.eventBus, deps.clock),
     'POST /api/deliveries/evaluate-slas',
     'DeliveryWindow.isBreached(ClockPort)',
+    adapterName,
+    {
+      policyName: 'delivery:sla:evaluate',
+      requiredRolesDescription: 'dispatcher or admin',
+      check: actor => canEvaluateDeliverySlas(actor),
+    },
   )
 
   const listShipments = wrap(

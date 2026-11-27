@@ -1,5 +1,6 @@
 export type DomainErrorStatusHint =
   | 'validation'
+  | 'unauthorized'
   | 'not_found'
   | 'conflict'
   | 'forbidden'
@@ -24,6 +25,30 @@ export class ValidationDomainError extends DomainError {
   constructor(code: string, message: string, details?: Record<string, unknown>) {
     super(message, details)
     this.code = code
+  }
+}
+
+export class UnauthorizedError extends DomainError {
+  readonly code = 'UNAUTHORIZED'
+  readonly statusHint: DomainErrorStatusHint = 'unauthorized'
+
+  constructor(
+    message = 'Authentication is required to perform this action',
+    details?: Record<string, unknown>,
+  ) {
+    super(message, details)
+  }
+}
+
+export class ForbiddenError extends DomainError {
+  readonly code = 'FORBIDDEN'
+  readonly statusHint: DomainErrorStatusHint = 'forbidden'
+
+  constructor(
+    message = 'You do not have permission to perform this action',
+    details?: Record<string, unknown>,
+  ) {
+    super(message, details)
   }
 }
 

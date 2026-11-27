@@ -141,7 +141,10 @@ export async function seedShipmentsIfEmpty(
   failedAttemptShipment.advanceTransit(hoursAgo(11), 'Antwerp Cross-Dock')
   failedAttemptShipment.advanceTransit(hoursAgo(7), 'Rotterdam Courier #09')
   failedAttemptShipment.recordFailedAttempt('Customs gate locked after shift change', hoursAgo(5))
-  failedAttemptShipment.recordFailedAttempt('Loading bay 7 blocked by crane maintenance', hoursAgo(2))
+  failedAttemptShipment.recordFailedAttempt(
+    'Loading bay 7 blocked by crane maintenance',
+    hoursAgo(2),
+  )
   await shipmentRepository.save(failedAttemptShipment)
   await eventBus.publishAll(failedAttemptShipment.pullDomainEvents())
 

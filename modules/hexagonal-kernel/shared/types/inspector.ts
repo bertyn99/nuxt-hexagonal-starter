@@ -20,7 +20,13 @@ export interface RegisteredModuleDto {
 }
 
 export interface TraceStepDto {
-  layer: 'driving-adapter' | 'application' | 'domain' | 'driven-adapter' | 'event-bus'
+  layer:
+    | 'driving-adapter'
+    | 'authorization'
+    | 'application'
+    | 'domain'
+    | 'driven-adapter'
+    | 'event-bus'
   component: string
   detail: string
   durationMs: number

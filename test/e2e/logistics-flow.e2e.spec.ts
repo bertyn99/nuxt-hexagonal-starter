@@ -9,10 +9,39 @@ import type {
   SlaEvaluationDto,
 } from '../../modules/delivery/shared/types/delivery'
 
-describe('End-to-End Logistics Flow (Real Nitro HTTP + SSR)', async () => {
+function extractCookieHeader(response: Response): string {
+  const setCookies = response.headers.getSetCookie?.() ?? []
+  if (setCookies.length > 0) {
+    return setCookies.map(c => c.split(';')[0]).join('; ')
+  }
+  const single = response.headers.get('set-cookie')
+  return single ? single.split(';')[0]! : ''
+}
+
+async function loginAs(email: string, password = 'hexlogix-demo'): Promise<string> {
+  const res = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  })
+  expect(res.status).toBe(200)
+  const cookie = extractCookieHeader(res)
+  expect(cookie).toContain('nuxt-auth-session=')
+  return cookie
+}
+
+describe('End-to-End Logistics & RBAC Flow (Real Nitro HTTP + SSR)', async () => {
   await setup({
     rootDir: fileURLToPath(new URL('../..', import.meta.url)),
     nuxtConfig: {
+      runtimeConfig: {
+        appSecret: 'e2e-test-app-secret-with-at-least-32-characters-hexlogix',
+        session: {
+          cookie: {
+            secure: false,
+          },
+        },
+      },
       hexagonal: {
         persistence: 'drizzle-sqlite',
         carrier: 'simulated',
@@ -23,28 +52,77 @@ describe('End-to-End Logistics Flow (Real Nitro HTTP + SSR)', async () => {
     },
   })
 
-  it('renders SSR pages across Host Shell, Warehouse module, and Delivery module', async () => {
-    const [overviewHtml, warehouseHtml, deliveryHtml] = await Promise.all([
+  it('renders SSR pages across Host Shell, Auth, Warehouse, and Delivery modules', async () => {
+    const [overviewHtml, loginHtml, warehouseHtml, deliveryHtml] = await Promise.all([
       $fetch<string>('/'),
+      $fetch<string>('/login'),
       $fetch<string>('/warehouse'),
       $fetch<string>('/deliveries'),
     ])
 
     expect(overviewHtml).toContain('Operations Overview')
+    expect(loginHtml).toContain('Authentication')
     expect(warehouseHtml).toContain('Warehouse Storage')
     expect(deliveryHtml).toContain('Delivery')
   })
 
-  it('runs full flow: store parcel -> reject incompatible zone -> create shipment -> dispatch -> block cancel -> advance virtual clock -> breach SLA & inspect timeline', async () => {
-    // 1. List seeded warehouse bins
+  it('enforces 401/403 RBAC across roles and executes full authenticated WMS + TMS flow', async () => {
+    // 0. Verify all bounded contexts registered eagerly on Nitro boot (before calling /api/auth/*)
+    const initialInspector = await $fetch<InspectorSnapshotDto>('/api/_hexagonal/inspector')
+    expect(initialInspector.modules.map(m => m.name)).toEqual(
+      expect.arrayContaining(['auth', 'warehouse', 'delivery']),
+    )
+
+    // 1. Read endpoints work for visibility
     const bins = await $fetch<WarehouseBinDto[]>('/api/warehouse/bins')
     const ambientBin = bins.find(b => b.zone === 'AMBIENT')
     expect(ambientBin).toBeDefined()
 
-    // 2. Verify domain invariant via HTTP: COLD_CHAIN cargo rejected in AMBIENT bin with 409
-    const rejectedRes = await fetch('/api/warehouse/cargo', {
+    const validCargoPayload = {
+      binId: ambientBin!.id,
+      kind: 'PARCEL',
+      sku: 'SKU-E2E-OPT',
+      label: 'E2E Optical Lidar Unit',
+      parcel: {
+        sku: 'SKU-E2E-OPT',
+        label: 'E2E Optical Lidar Unit',
+        weightKg: 12,
+        lengthCm: 50,
+        widthCm: 40,
+        heightCm: 30,
+        handlingClass: 'FRAGILE',
+      },
+    }
+
+    // 2. Anonymous write is rejected with 401 Unauthorized
+    const unauthRes = await fetch('/api/warehouse/cargo', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(validCargoPayload),
+    })
+    expect(unauthRes.status).toBe(401)
+
+    // 3. Viewer role is authenticated but forbidden (403) from warehouse writes & inspector clock
+    const viewerCookie = await loginAs('viewer@hexlogix.dev')
+    const viewerWarehouseRes = await fetch('/api/warehouse/cargo', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: viewerCookie },
+      body: JSON.stringify(validCargoPayload),
+    })
+    expect(viewerWarehouseRes.status).toBe(403)
+
+    const viewerClockRes = await fetch('/api/_hexagonal/clock', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: viewerCookie },
+      body: JSON.stringify({ action: 'advance', hours: 4 }),
+    })
+    expect(viewerClockRes.status).toBe(403)
+
+    // 4. Warehouse Operator can store cargo (and hits 409 domain invariant on incompatible zone)
+    const warehouseCookie = await loginAs('warehouse@hexlogix.dev')
+    const rejectedZoneRes = await fetch('/api/warehouse/cargo', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: warehouseCookie },
       body: JSON.stringify({
         binId: ambientBin!.id,
         kind: 'PARCEL',
@@ -61,35 +139,35 @@ describe('End-to-End Logistics Flow (Real Nitro HTTP + SSR)', async () => {
         },
       }),
     })
-    expect(rejectedRes.status).toBe(409)
+    expect(rejectedZoneRes.status).toBe(409)
 
-    // 3. Store valid FRAGILE parcel into AMBIENT bin
     const stored = await $fetch<{ bin: WarehouseBinDto; storedCargoId: string }>(
       '/api/warehouse/cargo',
       {
         method: 'POST',
-        body: {
-          binId: ambientBin!.id,
-          kind: 'PARCEL',
-          sku: 'SKU-E2E-OPT',
-          label: 'E2E Optical Lidar Unit',
-          parcel: {
-            sku: 'SKU-E2E-OPT',
-            label: 'E2E Optical Lidar Unit',
-            weightKg: 12,
-            lengthCm: 50,
-            widthCm: 40,
-            heightCm: 30,
-            handlingClass: 'FRAGILE',
-          },
-        },
+        headers: { cookie: warehouseCookie },
+        body: validCargoPayload,
       },
     )
     expect(stored.storedCargoId).toBeTruthy()
 
-    // 4. Create EXPRESS_AIR shipment allocating that cargo via Delivery -> Warehouse ACL
+    // Warehouse Operator cannot create TMS shipments (403 Forbidden)
+    const warehouseCreateShipmentRes = await fetch('/api/deliveries', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: warehouseCookie },
+      body: JSON.stringify({
+        cargoId: stored.storedCargoId,
+        destination: 'Munich Robotics Lab, DE',
+        carrierMode: 'EXPRESS_AIR',
+      }),
+    })
+    expect(warehouseCreateShipmentRes.status).toBe(403)
+
+    // 5. Dispatcher creates EXPRESS_AIR shipment allocating cargo via Delivery -> Warehouse ACL
+    const dispatcherCookie = await loginAs('dispatcher@hexlogix.dev')
     const createdShipment = await $fetch<ShipmentDto>('/api/deliveries', {
       method: 'POST',
+      headers: { cookie: dispatcherCookie },
       body: {
         cargoId: stored.storedCargoId,
         destination: 'Munich Robotics Lab, DE',
@@ -99,22 +177,33 @@ describe('End-to-End Logistics Flow (Real Nitro HTTP + SSR)', async () => {
     expect(createdShipment.state).toBe('PendingDispatch')
     expect(createdShipment.trackingNumber).toMatch(/^LOG-\d{4}-[A-Z0-9]{6}$/)
 
-    // 5. Dispatch shipment
+    // 6. Dispatcher dispatches shipment and hits 409 on illegal cancellation
     const dispatched = await $fetch<ShipmentDto>(`/api/deliveries/${createdShipment.id}/dispatch`, {
       method: 'POST',
+      headers: { cookie: dispatcherCookie },
     })
     expect(dispatched.state).toBe('Dispatched')
     expect(dispatched.carrierReference).toMatch(/^AIR-/)
 
-    // 6. Attempt illegal cancellation after dispatch -> HTTP 409
     const cancelRes = await fetch(`/api/deliveries/${createdShipment.id}/cancel`, {
       method: 'POST',
+      headers: { cookie: dispatcherCookie },
     })
     expect(cancelRes.status).toBe(409)
 
-    // 7. Advance Virtual Clock +24h past Express Air 12h SLA window
+    // Dispatcher cannot manipulate Virtual Clock (403 Forbidden)
+    const dispatcherClockRes = await fetch('/api/_hexagonal/clock', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: dispatcherCookie },
+      body: JSON.stringify({ action: 'advance', hours: 24 }),
+    })
+    expect(dispatcherClockRes.status).toBe(403)
+
+    // 7. Admin advances Virtual Clock +24h past Express Air 12h SLA window
+    const adminCookie = await loginAs('admin@hexlogix.dev')
     const clockSnap = await $fetch<InspectorSnapshotDto>('/api/_hexagonal/clock', {
       method: 'POST',
+      headers: { cookie: adminCookie },
       body: { action: 'advance', hours: 24 },
     })
     expect(clockSnap.clock.offsetHours).toBeGreaterThanOrEqual(24)
@@ -122,6 +211,7 @@ describe('End-to-End Logistics Flow (Real Nitro HTTP + SSR)', async () => {
     // 8. Evaluate SLAs -> verify breach detected
     const slaResult = await $fetch<SlaEvaluationDto>('/api/deliveries/evaluate-slas', {
       method: 'POST',
+      headers: { cookie: dispatcherCookie },
     })
     expect(slaResult.newlyBreachedCount).toBeGreaterThanOrEqual(1)
     expect(slaResult.breachedTrackingNumbers).toContain(createdShipment.trackingNumber)
@@ -135,11 +225,14 @@ describe('End-to-End Logistics Flow (Real Nitro HTTP + SSR)', async () => {
     expect(eventNames).toContain('ShipmentDispatched')
     expect(eventNames).toContain('DeliverySlaBreached')
 
-    // 10. Verify Architecture Inspector captured live traces
+    // 10. Verify Architecture Inspector captured live traces & registered auth/warehouse/delivery modules
     const inspector = await $fetch<InspectorSnapshotDto>('/api/_hexagonal/inspector')
     expect(inspector.traces.length).toBeGreaterThan(0)
+    expect(
+      inspector.traces.some(trace => trace.steps.some(step => step.layer === 'authorization')),
+    ).toBe(true)
     expect(inspector.modules.map(m => m.name)).toEqual(
-      expect.arrayContaining(['warehouse', 'delivery']),
+      expect.arrayContaining(['auth', 'warehouse', 'delivery']),
     )
   })
 })

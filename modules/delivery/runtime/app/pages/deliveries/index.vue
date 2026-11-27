@@ -1,5 +1,10 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
+import {
+  createShipmentAbility,
+  evaluateSlasAbility,
+  manageShipmentAbility,
+} from '../../../../shared/abilities/delivery.abilities'
 import type {
   CarrierModeDto,
   ShipmentDto,
@@ -62,7 +67,7 @@ const summaryMetrics = computed(() => {
   }
 })
 
-const stateOptions: { label: string, value: ShipmentStateDto | 'ALL' }[] = [
+const stateOptions: { label: string; value: ShipmentStateDto | 'ALL' }[] = [
   { label: 'All States', value: 'ALL' },
   { label: 'Pending Dispatch', value: 'PendingDispatch' },
   { label: 'Dispatched', value: 'Dispatched' },
@@ -74,7 +79,7 @@ const stateOptions: { label: string, value: ShipmentStateDto | 'ALL' }[] = [
   { label: 'Cancelled', value: 'Cancelled' },
 ]
 
-const carrierOptions: { label: string, value: CarrierModeDto | 'ALL' }[] = [
+const carrierOptions: { label: string; value: CarrierModeDto | 'ALL' }[] = [
   { label: 'All Carriers', value: 'ALL' },
   { label: 'Standard Ground', value: 'STANDARD_GROUND' },
   { label: 'Express Air', value: 'EXPRESS_AIR' },
@@ -83,7 +88,7 @@ const carrierOptions: { label: string, value: CarrierModeDto | 'ALL' }[] = [
 
 const filteredShipments = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
-  return shipments.value.filter((s) => {
+  return shipments.value.filter(s => {
     if (stateFilter.value !== 'ALL' && s.state !== stateFilter.value) {
       return false
     }
@@ -94,10 +99,11 @@ const filteredShipments = computed(() => {
       return false
     }
     if (q) {
-      const matchesQuery = s.trackingNumber.toLowerCase().includes(q)
-        || s.destination.toLowerCase().includes(q)
-        || s.cargoSummary.label.toLowerCase().includes(q)
-        || (s.carrierReference?.toLowerCase().includes(q) ?? false)
+      const matchesQuery =
+        s.trackingNumber.toLowerCase().includes(q) ||
+        s.destination.toLowerCase().includes(q) ||
+        s.cargoSummary.label.toLowerCase().includes(q) ||
+        (s.carrierReference?.toLowerCase().includes(q) ?? false)
       if (!matchesQuery) {
         return false
       }
@@ -106,7 +112,10 @@ const filteredShipments = computed(() => {
   })
 })
 
-const stateColors: Record<ShipmentStateDto, 'neutral' | 'info' | 'primary' | 'warning' | 'success' | 'error'> = {
+const stateColors: Record<
+  ShipmentStateDto,
+  'neutral' | 'info' | 'primary' | 'warning' | 'success' | 'error'
+> = {
   PendingDispatch: 'neutral',
   Dispatched: 'info',
   InTransit: 'primary',
@@ -130,33 +139,69 @@ const stateLabels: Record<ShipmentStateDto, string> = {
 
 type ShipmentAction = 'dispatch' | 'advance' | 'deliver' | 'fail-attempt' | 'cancel'
 
-function primaryAction(s: ShipmentDto): { action: ShipmentAction, label: string, icon: string, color: 'primary' | 'success' } | null {
+function primaryAction(
+  s: ShipmentDto,
+): { action: ShipmentAction; label: string; icon: string; color: 'primary' | 'success' } | null {
   switch (s.state) {
     case 'PendingDispatch':
       return { action: 'dispatch', label: 'Dispatch', icon: 'i-lucide-send', color: 'primary' }
     case 'Dispatched':
-      return { action: 'advance', label: 'Mark in transit', icon: 'i-lucide-truck', color: 'primary' }
+      return {
+        action: 'advance',
+        label: 'Mark in transit',
+        icon: 'i-lucide-truck',
+        color: 'primary',
+      }
     case 'InTransit':
-      return { action: 'advance', label: 'Out for delivery', icon: 'i-lucide-package-open', color: 'primary' }
+      return {
+        action: 'advance',
+        label: 'Out for delivery',
+        icon: 'i-lucide-package-open',
+        color: 'primary',
+      }
     case 'OutForDelivery':
       return { action: 'deliver', label: 'Deliver', icon: 'i-lucide-check', color: 'success' }
     case 'DeliveryAttemptFailed':
-      return { action: 'advance', label: 'Re-attempt', icon: 'i-lucide-rotate-cw', color: 'primary' }
+      return {
+        action: 'advance',
+        label: 'Re-attempt',
+        icon: 'i-lucide-rotate-cw',
+        color: 'primary',
+      }
     default:
       return null
   }
 }
 
 function secondaryActions(s: ShipmentDto) {
-  const items: { label: string, icon: string, color?: 'error' | 'warning', onSelect: () => void }[] = []
+  const items: {
+    label: string
+    icon: string
+    color?: 'error' | 'warning'
+    onSelect: () => void
+  }[] = []
   if (s.state === 'DeliveryAttemptFailed') {
-    items.push({ label: 'Mark delivered', icon: 'i-lucide-check', onSelect: () => handleAction(s, 'deliver') })
+    items.push({
+      label: 'Mark delivered',
+      icon: 'i-lucide-check',
+      onSelect: () => handleAction(s, 'deliver'),
+    })
   }
   if (s.state === 'OutForDelivery' || s.state === 'DeliveryAttemptFailed') {
-    items.push({ label: 'Record failed attempt', icon: 'i-lucide-triangle-alert', color: 'warning', onSelect: () => handleAction(s, 'fail-attempt') })
+    items.push({
+      label: 'Record failed attempt',
+      icon: 'i-lucide-triangle-alert',
+      color: 'warning',
+      onSelect: () => handleAction(s, 'fail-attempt'),
+    })
   }
   if (!s.isTerminal) {
-    items.push({ label: 'Cancel shipment', icon: 'i-lucide-ban', color: 'error', onSelect: () => handleAction(s, 'cancel') })
+    items.push({
+      label: 'Cancel shipment',
+      icon: 'i-lucide-ban',
+      color: 'error',
+      onSelect: () => handleAction(s, 'cancel'),
+    })
   }
   return [items]
 }
@@ -189,19 +234,16 @@ function resetFilters() {
   slaBreachedOnly.value = false
 }
 
-async function handleAction(
-  shipment: ShipmentDto,
-  action: ShipmentAction,
-) {
+async function handleAction(shipment: ShipmentDto, action: ShipmentAction) {
   try {
     if (action === 'fail-attempt') {
-      await runTransition(shipment.id, 'fail-attempt', { reason: 'Recipient unavailable at loading bay' })
-    }
-    else {
+      await runTransition(shipment.id, 'fail-attempt', {
+        reason: 'Recipient unavailable at loading bay',
+      })
+    } else {
       await runTransition(shipment.id, action)
     }
-  }
-  catch {
+  } catch {
     // Domain rejection toast is surfaced automatically by useDeliveries()
   }
 }
@@ -215,15 +257,17 @@ async function handleAction(
           <UDashboardSidebarCollapse />
         </template>
         <template #right>
-          <UButton
-            size="sm"
-            color="neutral"
-            variant="outline"
-            icon="i-lucide-radar"
-            @click="evaluateSlas"
-          >
-            Evaluate SLAs
-          </UButton>
+          <Can :ability="evaluateSlasAbility">
+            <UButton
+              size="sm"
+              color="neutral"
+              variant="outline"
+              icon="i-lucide-radar"
+              @click="evaluateSlas"
+            >
+              Evaluate SLAs
+            </UButton>
+          </Can>
           <UButton
             size="sm"
             color="neutral"
@@ -233,14 +277,16 @@ async function handleAction(
           >
             Inspector
           </UButton>
-          <UButton
-            size="sm"
-            color="primary"
-            icon="i-lucide-plus"
-            @click="createModalOpen = true"
-          >
-            Create Shipment
-          </UButton>
+          <Can :ability="createShipmentAbility">
+            <UButton size="sm" color="primary" icon="i-lucide-plus" @click="createModalOpen = true">
+              Create Shipment
+            </UButton>
+          </Can>
+          <Cannot :ability="createShipmentAbility">
+            <UButton size="sm" color="neutral" variant="subtle" icon="i-lucide-lock" to="/login">
+              Sign in (TMS Role)
+            </UButton>
+          </Cannot>
         </template>
       </UDashboardNavbar>
 
@@ -268,11 +314,7 @@ async function handleAction(
               size="xs"
               class="w-36"
             />
-            <UCheckbox
-              v-model="slaBreachedOnly"
-              label="SLA Breached only"
-              size="sm"
-            />
+            <UCheckbox v-model="slaBreachedOnly" label="SLA Breached only" size="sm" />
           </div>
         </template>
         <template #right>
@@ -299,7 +341,9 @@ async function handleAction(
           icon="i-lucide-alert-circle"
           title="Unable to load shipments"
           :description="loadError"
-          :actions="[{ label: 'Retry', color: 'error', variant: 'outline', onClick: refreshDeliveries }]"
+          :actions="[
+            { label: 'Retry', color: 'error', variant: 'outline', onClick: refreshDeliveries },
+          ]"
         />
 
         <!-- Compact Operational Telemetry Strip -->
@@ -309,15 +353,21 @@ async function handleAction(
         >
           <div class="p-3.5 sm:p-4">
             <p class="text-xs text-muted">Total Shipments</p>
-            <p class="mt-1 text-2xl font-semibold tabular-nums text-highlighted">{{ summaryMetrics.total }}</p>
+            <p class="mt-1 text-2xl font-semibold tabular-nums text-highlighted">
+              {{ summaryMetrics.total }}
+            </p>
           </div>
           <div class="p-3.5 sm:p-4">
             <p class="text-xs text-muted">Pending Dispatch</p>
-            <p class="mt-1 text-2xl font-semibold tabular-nums text-highlighted">{{ summaryMetrics.pendingDispatch }}</p>
+            <p class="mt-1 text-2xl font-semibold tabular-nums text-highlighted">
+              {{ summaryMetrics.pendingDispatch }}
+            </p>
           </div>
           <div class="p-3.5 sm:p-4">
             <p class="text-xs text-muted">Active In Flight</p>
-            <p class="mt-1 text-2xl font-semibold tabular-nums text-info">{{ summaryMetrics.inFlight }}</p>
+            <p class="mt-1 text-2xl font-semibold tabular-nums text-info">
+              {{ summaryMetrics.inFlight }}
+            </p>
           </div>
           <button
             type="button"
@@ -326,7 +376,9 @@ async function handleAction(
           >
             <div class="flex items-center justify-between w-full">
               <p class="text-xs text-muted">SLA Breached</p>
-              <span class="text-[11px] text-primary">{{ slaBreachedOnly ? 'Showing breached' : 'Filter' }}</span>
+              <span class="text-[11px] text-primary">{{
+                slaBreachedOnly ? 'Showing breached' : 'Filter'
+              }}</span>
             </div>
             <p
               class="mt-1 text-2xl font-semibold tabular-nums"
@@ -354,16 +406,24 @@ async function handleAction(
                   {{ row.original.trackingNumber }}
                 </button>
                 <p class="font-mono text-[11px] text-muted tabular-nums whitespace-nowrap">
-                  {{ row.original.originBinCode }}<span v-if="row.original.carrierReference"> • {{ row.original.carrierReference }}</span>
+                  {{ row.original.originBinCode
+                  }}<span v-if="row.original.carrierReference">
+                    • {{ row.original.carrierReference }}</span
+                  >
                 </p>
               </div>
             </template>
 
             <template #destination-cell="{ row }">
               <div class="space-y-0.5 max-w-52">
-                <p class="truncate text-xs font-medium text-highlighted">{{ row.original.destination }}</p>
+                <p class="truncate text-xs font-medium text-highlighted">
+                  {{ row.original.destination }}
+                </p>
                 <p class="truncate text-[11px] text-muted tabular-nums">
-                  {{ row.original.cargoSummary.label }} ({{ row.original.cargoSummary.handlingClass }} • {{ row.original.cargoSummary.weightKg }}kg)
+                  {{ row.original.cargoSummary.label }} ({{
+                    row.original.cargoSummary.handlingClass
+                  }}
+                  • {{ row.original.cargoSummary.weightKg }}kg)
                 </p>
               </div>
             </template>
@@ -376,10 +436,18 @@ async function handleAction(
 
             <template #state-cell="{ row }">
               <div class="flex items-center gap-1.5">
-                <UBadge :color="stateColors[row.original.state]" variant="subtle" size="md" class="whitespace-nowrap">
+                <UBadge
+                  :color="stateColors[row.original.state]"
+                  variant="subtle"
+                  size="md"
+                  class="whitespace-nowrap"
+                >
                   {{ stateLabels[row.original.state] }}
                 </UBadge>
-                <span v-if="row.original.attemptCount > 0" class="font-mono text-xs text-warning tabular-nums">
+                <span
+                  v-if="row.original.attemptCount > 0"
+                  class="font-mono text-xs text-warning tabular-nums"
+                >
                   ({{ row.original.attemptCount }}/3)
                 </span>
               </div>
@@ -405,7 +473,10 @@ async function handleAction(
                   Met On-Time
                 </UBadge>
                 <UBadge
-                  v-else-if="row.original.state === 'Cancelled' || row.original.state === 'ReturnedToWarehouse'"
+                  v-else-if="
+                    row.original.state === 'Cancelled' ||
+                    row.original.state === 'ReturnedToWarehouse'
+                  "
                   color="neutral"
                   variant="soft"
                   size="xs"
@@ -413,7 +484,11 @@ async function handleAction(
                   Closed
                 </UBadge>
                 <span v-else class="font-mono text-[11px] text-muted tabular-nums">
-                  {{ row.original.remainingHours >= 0 ? `${row.original.remainingHours}h left` : `${Math.abs(row.original.remainingHours)}h overdue` }}
+                  {{
+                    row.original.remainingHours >= 0
+                      ? `${row.original.remainingHours}h left`
+                      : `${Math.abs(row.original.remainingHours)}h overdue`
+                  }}
                 </span>
               </div>
             </template>
@@ -426,30 +501,32 @@ async function handleAction(
 
             <template #actions-cell="{ row }">
               <div class="flex items-center justify-end gap-1">
-                <UButton
-                  v-if="primaryAction(row.original)"
-                  size="xs"
-                  :color="primaryAction(row.original)!.color"
-                  variant="soft"
-                  :icon="primaryAction(row.original)!.icon"
-                  class="whitespace-nowrap"
-                  @click="handleAction(row.original, primaryAction(row.original)!.action)"
-                >
-                  {{ primaryAction(row.original)!.label }}
-                </UButton>
-                <UDropdownMenu
-                  v-if="secondaryActions(row.original)[0]!.length"
-                  :items="secondaryActions(row.original)"
-                  :content="{ align: 'end' }"
-                >
+                <Can :ability="manageShipmentAbility">
                   <UButton
+                    v-if="primaryAction(row.original)"
                     size="xs"
-                    color="neutral"
-                    variant="ghost"
-                    icon="i-lucide-ellipsis"
-                    aria-label="More actions"
-                  />
-                </UDropdownMenu>
+                    :color="primaryAction(row.original)!.color"
+                    variant="soft"
+                    :icon="primaryAction(row.original)!.icon"
+                    class="whitespace-nowrap"
+                    @click="handleAction(row.original, primaryAction(row.original)!.action)"
+                  >
+                    {{ primaryAction(row.original)!.label }}
+                  </UButton>
+                  <UDropdownMenu
+                    v-if="secondaryActions(row.original)[0]!.length"
+                    :items="secondaryActions(row.original)"
+                    :content="{ align: 'end' }"
+                  >
+                    <UButton
+                      size="xs"
+                      color="neutral"
+                      variant="ghost"
+                      icon="i-lucide-ellipsis"
+                      aria-label="More actions"
+                    />
+                  </UDropdownMenu>
+                </Can>
                 <UTooltip text="View domain event timeline">
                   <UButton
                     size="xs"
@@ -470,7 +547,14 @@ async function handleAction(
                 icon="i-lucide-truck"
                 title="No shipments match the active filters"
                 description="Reset filters or create a new shipment from available warehouse stock."
-                :actions="[{ label: 'Reset filters', color: 'neutral', variant: 'outline', onClick: resetFilters }]"
+                :actions="[
+                  {
+                    label: 'Reset filters',
+                    color: 'neutral',
+                    variant: 'outline',
+                    onClick: resetFilters,
+                  },
+                ]"
               />
             </template>
           </UTable>

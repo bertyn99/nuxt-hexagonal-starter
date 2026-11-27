@@ -1,15 +1,20 @@
 import { useLogger } from 'evlog'
 import { defineEventHandler } from 'h3'
+import { resolveExecutionContext } from '../../../../../hexagonal-kernel/runtime/server/utils/actor-context'
 import { mapDomainErrorToHttp } from '../../../../../hexagonal-kernel/runtime/server/utils/http-error-mapper'
 import { useDeliveryModule } from '../../utils/delivery-container'
 
 export default defineEventHandler(async event => {
   const log = useLogger(event)
   try {
-    log.set({ sla: { action: 'evaluate' } })
+    const ctx = await resolveExecutionContext(event)
+    log.set({
+      actor: { id: ctx.actor.id, roles: [...ctx.actor.roles] },
+      sla: { action: 'evaluate' },
+    })
 
     const delivery = await useDeliveryModule()
-    const result = await delivery.evaluateSlas.execute()
+    const result = await delivery.evaluateSlas.execute(undefined, ctx)
 
     log.set({
       sla: {

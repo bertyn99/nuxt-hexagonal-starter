@@ -28,7 +28,7 @@ const kindTabs = [
   { label: 'Composite Pallet', value: 'PALLET', icon: 'i-lucide-layers' },
 ]
 
-const handlingOptions: { label: string, value: HandlingClassDto }[] = [
+const handlingOptions: { label: string; value: HandlingClassDto }[] = [
   { label: 'Standard', value: 'STANDARD' },
   { label: 'Fragile', value: 'FRAGILE' },
   { label: 'Cold Chain (-20°C)', value: 'COLD_CHAIN' },
@@ -115,15 +115,17 @@ const SEVERITY: Record<HandlingClassDto, number> = {
 const palletSummary = computed(() => {
   const totalWeight = Number(
     (
-      Number(palletState.tareWeightKg || 0)
-      + palletState.items.reduce((acc, item) => acc + Number(item.weightKg || 0), 0)
+      Number(palletState.tareWeightKg || 0) +
+      palletState.items.reduce((acc, item) => acc + Number(item.weightKg || 0), 0)
     ).toFixed(2),
   )
   const totalVolume = Number(
     palletState.items
       .reduce(
         (acc, item) =>
-          acc + (Number(item.lengthCm || 0) * Number(item.widthCm || 0) * Number(item.heightCm || 0)) / 1_000_000,
+          acc +
+          (Number(item.lengthCm || 0) * Number(item.widthCm || 0) * Number(item.heightCm || 0)) /
+            1_000_000,
         0,
       )
       .toFixed(4),
@@ -168,11 +170,9 @@ async function onSubmitParcel(event: FormSubmitEvent<ReceiveCargoRequest>) {
     await receiveCargo(payload, { silentErrorToast: true })
     open.value = false
     emit('submitted')
-  }
-  catch (err: unknown) {
+  } catch (err: unknown) {
     submitError.value = formatApiError(err, 'Failed to store parcel').details
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -184,11 +184,9 @@ async function onSubmitPallet(event: FormSubmitEvent<ReceiveCargoRequest>) {
     await receiveCargo(event.data, { silentErrorToast: true })
     open.value = false
     emit('submitted')
-  }
-  catch (err: unknown) {
+  } catch (err: unknown) {
     submitError.value = formatApiError(err, 'Failed to store pallet').details
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -203,13 +201,7 @@ async function onSubmitPallet(event: FormSubmitEvent<ReceiveCargoRequest>) {
   >
     <template #body>
       <div class="space-y-4">
-        <UTabs
-          v-model="cargoKind"
-          :items="kindTabs"
-          :content="false"
-          size="sm"
-          class="w-full"
-        />
+        <UTabs v-model="cargoKind" :items="kindTabs" :content="false" size="sm" class="w-full" />
 
         <UAlert
           v-if="submitError"
@@ -258,16 +250,33 @@ async function onSubmitPallet(event: FormSubmitEvent<ReceiveCargoRequest>) {
 
           <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <UFormField label="Weight (kg)" name="parcel.weightKg" required>
-              <UInput v-model.number="parcelState.parcel.weightKg" type="number" step="0.5" class="w-full font-mono" />
+              <UInput
+                v-model.number="parcelState.parcel.weightKg"
+                type="number"
+                step="0.5"
+                class="w-full font-mono"
+              />
             </UFormField>
             <UFormField label="Length (cm)" name="parcel.lengthCm" required>
-              <UInput v-model.number="parcelState.parcel.lengthCm" type="number" class="w-full font-mono" />
+              <UInput
+                v-model.number="parcelState.parcel.lengthCm"
+                type="number"
+                class="w-full font-mono"
+              />
             </UFormField>
             <UFormField label="Width (cm)" name="parcel.widthCm" required>
-              <UInput v-model.number="parcelState.parcel.widthCm" type="number" class="w-full font-mono" />
+              <UInput
+                v-model.number="parcelState.parcel.widthCm"
+                type="number"
+                class="w-full font-mono"
+              />
             </UFormField>
             <UFormField label="Height (cm)" name="parcel.heightCm" required>
-              <UInput v-model.number="parcelState.parcel.heightCm" type="number" class="w-full font-mono" />
+              <UInput
+                v-model.number="parcelState.parcel.heightCm"
+                type="number"
+                class="w-full font-mono"
+              />
             </UFormField>
           </div>
         </UForm>
@@ -298,22 +307,34 @@ async function onSubmitPallet(event: FormSubmitEvent<ReceiveCargoRequest>) {
               <UInput v-model="palletState.label" class="w-full" />
             </UFormField>
             <UFormField label="Tare Weight (kg)" name="tareWeightKg">
-              <UInput v-model.number="palletState.tareWeightKg" type="number" class="w-full font-mono" />
+              <UInput
+                v-model.number="palletState.tareWeightKg"
+                type="number"
+                class="w-full font-mono"
+              />
             </UFormField>
           </div>
 
-          <div class="grid grid-cols-3 divide-x divide-default rounded-md border border-default bg-elevated/40 p-3 text-xs">
+          <div
+            class="grid grid-cols-3 divide-x divide-default rounded-md border border-default bg-elevated/40 p-3 text-xs"
+          >
             <div class="pr-3">
               <span class="text-muted">Composite Weight</span>
-              <p class="mt-0.5 font-mono font-semibold text-highlighted tabular-nums">{{ palletSummary.totalWeight }} kg</p>
+              <p class="mt-0.5 font-mono font-semibold text-highlighted tabular-nums">
+                {{ palletSummary.totalWeight }} kg
+              </p>
             </div>
             <div class="px-3">
               <span class="text-muted">Total Volume</span>
-              <p class="mt-0.5 font-mono font-semibold text-highlighted tabular-nums">{{ palletSummary.totalVolume }} m³</p>
+              <p class="mt-0.5 font-mono font-semibold text-highlighted tabular-nums">
+                {{ palletSummary.totalVolume }} m³
+              </p>
             </div>
             <div class="pl-3">
               <span class="text-muted">Strictest Handling</span>
-              <p class="mt-0.5 font-mono font-semibold text-primary">{{ palletSummary.strictest }}</p>
+              <p class="mt-0.5 font-mono font-semibold text-primary">
+                {{ palletSummary.strictest }}
+              </p>
             </div>
           </div>
 
@@ -322,7 +343,13 @@ async function onSubmitPallet(event: FormSubmitEvent<ReceiveCargoRequest>) {
               <span class="text-xs font-medium text-muted">
                 Nested Child Parcels ({{ palletState.items.length }})
               </span>
-              <UButton size="xs" color="neutral" variant="outline" icon="i-lucide-plus" @click="addPalletItem">
+              <UButton
+                size="xs"
+                color="neutral"
+                variant="outline"
+                icon="i-lucide-plus"
+                @click="addPalletItem"
+              >
                 Add Child Parcel
               </UButton>
             </div>
@@ -355,16 +382,36 @@ async function onSubmitPallet(event: FormSubmitEvent<ReceiveCargoRequest>) {
               </div>
               <div class="grid grid-cols-4 gap-2">
                 <UFormField label="Weight (kg)" size="xs">
-                  <UInput v-model.number="item.weightKg" type="number" size="sm" class="font-mono w-full" />
+                  <UInput
+                    v-model.number="item.weightKg"
+                    type="number"
+                    size="sm"
+                    class="font-mono w-full"
+                  />
                 </UFormField>
                 <UFormField label="L (cm)" size="xs">
-                  <UInput v-model.number="item.lengthCm" type="number" size="sm" class="font-mono w-full" />
+                  <UInput
+                    v-model.number="item.lengthCm"
+                    type="number"
+                    size="sm"
+                    class="font-mono w-full"
+                  />
                 </UFormField>
                 <UFormField label="W (cm)" size="xs">
-                  <UInput v-model.number="item.widthCm" type="number" size="sm" class="font-mono w-full" />
+                  <UInput
+                    v-model.number="item.widthCm"
+                    type="number"
+                    size="sm"
+                    class="font-mono w-full"
+                  />
                 </UFormField>
                 <UFormField label="H (cm)" size="xs">
-                  <UInput v-model.number="item.heightCm" type="number" size="sm" class="font-mono w-full" />
+                  <UInput
+                    v-model.number="item.heightCm"
+                    type="number"
+                    size="sm"
+                    class="font-mono w-full"
+                  />
                 </UFormField>
               </div>
             </div>
@@ -374,9 +421,7 @@ async function onSubmitPallet(event: FormSubmitEvent<ReceiveCargoRequest>) {
     </template>
 
     <template #footer="{ close }">
-      <UButton color="neutral" variant="outline" @click="close">
-        Cancel
-      </UButton>
+      <UButton color="neutral" variant="outline" @click="close"> Cancel </UButton>
       <UButton
         type="submit"
         :form="cargoKind === 'PARCEL' ? 'receive-parcel-form' : 'receive-pallet-form'"

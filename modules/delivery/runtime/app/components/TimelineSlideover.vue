@@ -31,7 +31,10 @@ const loadError = computed(() =>
     : null,
 )
 
-const stateColors: Record<string, 'neutral' | 'info' | 'primary' | 'warning' | 'success' | 'error'> = {
+const stateColors: Record<
+  string,
+  'neutral' | 'info' | 'primary' | 'warning' | 'success' | 'error'
+> = {
   PendingDispatch: 'neutral',
   Dispatched: 'info',
   InTransit: 'primary',
@@ -70,7 +73,11 @@ const timelineItems = computed<TimelineItem[]>(() => {
   <USlideover
     v-model:open="open"
     :title="timeline ? `Tracking ${timeline.shipment.trackingNumber}` : 'Shipment Audit Trail'"
-    :description="timeline ? `${timeline.shipment.destination} • ${timeline.shipment.carrierMode}` : 'Chronological Domain Events'"
+    :description="
+      timeline
+        ? `${timeline.shipment.destination} • ${timeline.shipment.carrierMode}`
+        : 'Chronological Domain Events'
+    "
     side="right"
     :ui="{ content: 'max-w-lg' }"
   >
@@ -88,30 +95,62 @@ const timelineItems = computed<TimelineItem[]>(() => {
         icon="i-lucide-alert-circle"
         title="Unable to load shipment timeline"
         :description="loadError"
-        :actions="[{ label: 'Retry', color: 'error', variant: 'outline', onClick: () => refresh() }]"
+        :actions="[
+          { label: 'Retry', color: 'error', variant: 'outline', onClick: () => refresh() },
+        ]"
       />
 
       <div v-else-if="timeline" class="space-y-5">
         <div class="rounded-lg border border-default bg-elevated/35 p-4 space-y-3 text-xs">
           <div class="flex items-center justify-between gap-2">
-            <span class="font-semibold text-highlighted">{{ timeline.shipment.cargoSummary.label }}</span>
+            <span class="font-semibold text-highlighted">{{
+              timeline.shipment.cargoSummary.label
+            }}</span>
             <UBadge
-              :color="timeline.shipment.slaBreached ? 'error' : (stateColors[timeline.shipment.state] ?? 'neutral')"
+              :color="
+                timeline.shipment.slaBreached
+                  ? 'error'
+                  : (stateColors[timeline.shipment.state] ?? 'neutral')
+              "
               variant="subtle"
             >
               {{ timeline.shipment.state }}
             </UBadge>
           </div>
           <div class="grid grid-cols-2 gap-2 text-muted tabular-nums">
-            <div>Origin Bin: <span class="font-mono text-highlighted">{{ timeline.shipment.originBinCode }}</span></div>
-            <div>Quoted Cost: <span class="font-mono text-highlighted">{{ timeline.shipment.quotedCostFormatted }}</span></div>
-            <div>Weight: <span class="font-mono text-highlighted">{{ timeline.shipment.cargoSummary.weightKg }} kg</span></div>
-            <div>Attempts: <span class="font-mono text-highlighted">{{ timeline.shipment.attemptCount }} / 3</span></div>
+            <div>
+              Origin Bin:
+              <span class="font-mono text-highlighted">{{ timeline.shipment.originBinCode }}</span>
+            </div>
+            <div>
+              Quoted Cost:
+              <span class="font-mono text-highlighted">{{
+                timeline.shipment.quotedCostFormatted
+              }}</span>
+            </div>
+            <div>
+              Weight:
+              <span class="font-mono text-highlighted"
+                >{{ timeline.shipment.cargoSummary.weightKg }} kg</span
+              >
+            </div>
+            <div>
+              Attempts:
+              <span class="font-mono text-highlighted"
+                >{{ timeline.shipment.attemptCount }} / 3</span
+              >
+            </div>
           </div>
-          <div class="pt-1 border-t border-default/60 font-mono text-[11px] text-muted flex items-center justify-between gap-2">
+          <div
+            class="pt-1 border-t border-default/60 font-mono text-[11px] text-muted flex items-center justify-between gap-2"
+          >
             <span>
               Promised By:
-              <NuxtTime :datetime="timeline.shipment.promisedByIso" date-style="short" time-style="short" />
+              <NuxtTime
+                :datetime="timeline.shipment.promisedByIso"
+                date-style="short"
+                time-style="short"
+              />
             </span>
             <UBadge v-if="timeline.shipment.slaBreached" color="error" variant="solid" size="xs">
               BREACHED
@@ -129,9 +168,7 @@ const timelineItems = computed<TimelineItem[]>(() => {
 
         <div class="space-y-3">
           <div class="flex items-center justify-between">
-            <h3 class="text-xs font-semibold text-highlighted">
-              Domain Event Timeline
-            </h3>
+            <h3 class="text-xs font-semibold text-highlighted">Domain Event Timeline</h3>
             <UBadge color="neutral" variant="subtle" size="xs" class="tabular-nums">
               {{ timelineItems.length }} event(s)
             </UBadge>

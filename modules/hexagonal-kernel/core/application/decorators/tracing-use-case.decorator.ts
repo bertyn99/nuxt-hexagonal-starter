@@ -1,13 +1,14 @@
-import { DomainError } from '../../domain/domain-error'
+import { DomainError, ForbiddenError, UnauthorizedError } from '../../domain/domain-error'
 import type { ClockPort } from '../ports/clock.port'
 import type { EventBusPort } from '../ports/event-bus.port'
 import type { TraceCollectorPort, TraceStep } from '../ports/trace-collector.port'
-import type { UseCase } from '../use-case'
+import type { ExecutionContext, UseCase } from '../use-case'
 
 export interface TracingMetadata {
   readonly drivingAdapter?: string
   readonly domainComponent?: string
   readonly drivenAdapter?: string
+  readonly authorized?: boolean
 }
 
 let traceSeq = 0
@@ -27,12 +28,16 @@ export class TracingUseCaseDecorator<TInput, TOutput> implements UseCase<TInput,
     this.boundedContext = inner.boundedContext
   }
 
-  async execute(input: TInput): Promise<TOutput> {
+  async execute(input: TInput, ctx?: ExecutionContext): Promise<TOutput> {
     traceSeq += 1
     const traceId = `trc_${Date.now().toString(36)}_${traceSeq.toString(36).padStart(4, '0')}`
     const startedAt = this.clock.isoNow()
     const eventsBefore = this.eventBus.getPublishedEvents(1000).length
     const startMs = Date.now()
+
+    const actorSummary = ctx?.actor
+      ? `${ctx.actor.email || ctx.actor.id} [${ctx.actor.roles.join(', ') || 'anonymous'}]`
+      : 'anonymous [anonymous]'
 
     const steps: TraceStep[] = []
     if (this.metadata.drivingAdapter) {
@@ -46,10 +51,20 @@ export class TracingUseCaseDecorator<TInput, TOutput> implements UseCase<TInput,
     }
 
     try {
-      const result = await this.inner.execute(input)
+      const result = await this.inner.execute(input, ctx)
       const totalDurationMs = Math.max(0.1, Number((Date.now() - startMs).toFixed(2)))
       const eventsAfter = this.eventBus.getPublishedEvents(1000)
       const emittedEvents = eventsAfter.slice(eventsBefore)
+
+      if (this.metadata.authorized) {
+        steps.push({
+          layer: 'authorization',
+          component: 'AuthorizingUseCaseDecorator',
+          detail: `Authorized ${actorSummary}`,
+          durationMs: 0.1,
+          status: 'ok',
+        })
+      }
 
       steps.push({
         layer: 'application',
@@ -103,25 +118,46 @@ export class TracingUseCaseDecorator<TInput, TOutput> implements UseCase<TInput,
     } catch (error: unknown) {
       const totalDurationMs = Math.max(0.1, Number((Date.now() - startMs).toFixed(2)))
       const isDomain = error instanceof DomainError
+      const isAuthFailure = error instanceof UnauthorizedError || error instanceof ForbiddenError
       const errorCode = isDomain ? error.code : 'UNEXPECTED_ERROR'
       const errorMessage = error instanceof Error ? error.message : String(error)
 
-      steps.push({
-        layer: 'application',
-        component: this.inner.name,
-        detail: `Failed with ${errorCode}`,
-        durationMs: Number((totalDurationMs * 0.4).toFixed(2)),
-        status: 'error',
-      })
-
-      if (this.metadata.domainComponent) {
+      if (isAuthFailure) {
         steps.push({
-          layer: 'domain',
-          component: this.metadata.domainComponent,
-          detail: errorMessage,
-          durationMs: Number((totalDurationMs * 0.6).toFixed(2)),
+          layer: 'authorization',
+          component: 'AuthorizingUseCaseDecorator',
+          detail: `Rejected ${actorSummary}: ${errorMessage}`,
+          durationMs: totalDurationMs,
           status: 'error',
         })
+      } else {
+        if (this.metadata.authorized) {
+          steps.push({
+            layer: 'authorization',
+            component: 'AuthorizingUseCaseDecorator',
+            detail: `Authorized ${actorSummary}`,
+            durationMs: 0.1,
+            status: 'ok',
+          })
+        }
+
+        steps.push({
+          layer: 'application',
+          component: this.inner.name,
+          detail: `Failed with ${errorCode}`,
+          durationMs: Number((totalDurationMs * 0.4).toFixed(2)),
+          status: 'error',
+        })
+
+        if (this.metadata.domainComponent) {
+          steps.push({
+            layer: 'domain',
+            component: this.metadata.domainComponent,
+            detail: errorMessage,
+            durationMs: Number((totalDurationMs * 0.6).toFixed(2)),
+            status: 'error',
+          })
+        }
       }
 
       this.traceCollector.recordTrace({

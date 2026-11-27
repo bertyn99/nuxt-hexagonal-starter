@@ -1,4 +1,5 @@
 export const API_CACHE_KEYS = {
+  authPersonas: 'auth:personas',
   warehouseBins: 'warehouse:bins',
   warehouseUtilization: 'warehouse:utilization',
   deliveryShipments: 'delivery:shipments',

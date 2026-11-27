@@ -1,5 +1,5 @@
 import type { HandlingClass } from '../../../hexagonal-kernel/core/domain/handling-class'
-import type { UseCase } from '../../../hexagonal-kernel/core/application/use-case'
+import type { ExecutionContext, UseCase } from '../../../hexagonal-kernel/core/application/use-case'
 import type { WarehouseBinView } from './dtos/warehouse.dtos'
 import type {
   AllocateCargoForShipmentInput,
@@ -30,11 +30,15 @@ export interface PublicAvailableCargoDto {
  * this application contract via their own Anti-Corruption Layer adapter.
  */
 export interface WarehousePublicFacade {
-  listAvailableCargo(): Promise<PublicAvailableCargoDto[]>
+  listAvailableCargo(ctx?: ExecutionContext): Promise<PublicAvailableCargoDto[]>
   allocateCargoForShipment(
     input: AllocateCargoForShipmentInput,
+    ctx?: ExecutionContext,
   ): Promise<AllocateCargoForShipmentOutput>
-  returnCargoToWarehouse(input: ReturnCargoToWarehouseInput): Promise<ReturnCargoToWarehouseOutput>
+  returnCargoToWarehouse(
+    input: ReturnCargoToWarehouseInput,
+    ctx?: ExecutionContext,
+  ): Promise<ReturnCargoToWarehouseOutput>
 }
 
 export function createWarehousePublicFacade(deps: {
@@ -43,8 +47,8 @@ export function createWarehousePublicFacade(deps: {
   returnCargo: UseCase<ReturnCargoToWarehouseInput, ReturnCargoToWarehouseOutput>
 }): WarehousePublicFacade {
   return {
-    async listAvailableCargo(): Promise<PublicAvailableCargoDto[]> {
-      const bins = await deps.listBins.execute({})
+    async listAvailableCargo(ctx?: ExecutionContext): Promise<PublicAvailableCargoDto[]> {
+      const bins = await deps.listBins.execute({}, ctx)
       const available: PublicAvailableCargoDto[] = []
       for (const bin of bins) {
         for (const cargo of bin.storedCargo) {
@@ -67,12 +71,12 @@ export function createWarehousePublicFacade(deps: {
       return available
     },
 
-    allocateCargoForShipment(input) {
-      return deps.allocateCargo.execute(input)
+    allocateCargoForShipment(input, ctx) {
+      return deps.allocateCargo.execute(input, ctx)
     },
 
-    returnCargoToWarehouse(input) {
-      return deps.returnCargo.execute(input)
+    returnCargoToWarehouse(input, ctx) {
+      return deps.returnCargo.execute(input, ctx)
     },
   }
 }

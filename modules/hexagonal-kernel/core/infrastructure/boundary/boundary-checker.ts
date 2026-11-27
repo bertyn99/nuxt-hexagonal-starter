@@ -2,7 +2,11 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { dirname, posix, relative, resolve } from 'node:path'
 
 export interface BoundaryViolation {
-  readonly rule: 'DOMAIN_PURITY' | 'APPLICATION_ISOLATION' | 'CROSS_CONTEXT_ISOLATION'
+  readonly rule:
+    | 'DOMAIN_PURITY'
+    | 'APPLICATION_ISOLATION'
+    | 'CROSS_CONTEXT_ISOLATION'
+    | 'KERNEL_ISOLATION'
   readonly file: string
   readonly importSpecifier: string
   readonly message: string
@@ -20,6 +24,9 @@ const FORBIDDEN_CORE_PACKAGES = [
   'better-sqlite3',
   'zod',
   'evlog',
+  'nuxt-auth-utils',
+  'nuxt-authorization',
+  'better-auth',
   '#imports',
   '#app',
   '#nitro',
@@ -200,7 +207,20 @@ export function checkHexagonalBoundaries(rootDir: string): BoundaryViolation[] {
         continue
       }
 
-      // Rule 2: Cross-Context Isolation (applies to every layer of non-kernel bounded contexts)
+      // Rule 2: Kernel Isolation (hexagonal-kernel must NEVER import any sibling bounded context)
+      if (owner.moduleName === 'hexagonal-kernel' && normalizedTarget) {
+        const targetInfo = parseModuleLayer(normalizedTarget)
+        if (targetInfo && targetInfo.moduleName !== 'hexagonal-kernel') {
+          violations.push({
+            rule: 'KERNEL_ISOLATION',
+            file: relFile,
+            importSpecifier: spec,
+            message: `Kernel file "${relFile}" must not depend on bounded context "${targetInfo.moduleName}" ("${normalizedTarget}"). Register hooks/ports into hexagonal-kernel from the context instead.`,
+          })
+        }
+      }
+
+      // Rule 3: Cross-Context Isolation (applies to every layer of non-kernel bounded contexts)
       if (owner.moduleName !== 'hexagonal-kernel' && normalizedTarget) {
         const targetInfo = parseModuleLayer(normalizedTarget)
         if (

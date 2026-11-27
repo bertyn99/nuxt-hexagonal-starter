@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { controlInspectorAbility } from '../../../shared/abilities/inspector.abilities'
+
 const { isOpen, mutating, advanceClock, resetClock, updateFaults, evaluateSlas } = useHexInspector()
 
 const snapshotQuery = useHexInspectorSnapshot()
@@ -92,6 +94,35 @@ function setExtraDelay(hours: number) {
 
         <template v-if="snapshot">
           <div v-if="activeTab === 'controls'" class="space-y-4">
+            <!-- Active RBAC Persona Switcher (injected via slot so kernel stays auth-module agnostic) -->
+            <UCard :ui="{ body: 'space-y-2.5 p-4' }">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <UIcon name="i-lucide-shield" class="size-4 text-primary" />
+                  <span class="text-sm font-semibold">Active RBAC Persona</span>
+                </div>
+                <slot name="actor">
+                  <UButton size="xs" color="neutral" variant="soft" to="/login">
+                    Manage session
+                  </UButton>
+                </slot>
+              </div>
+              <p class="text-xs text-muted">
+                Switch personas to verify <code>nuxt-authorization</code> UI abilities and
+                <code>AuthorizingUseCaseDecorator</code> (401/403) enforcement live.
+              </p>
+              <Cannot :ability="controlInspectorAbility">
+                <UAlert
+                  color="warning"
+                  variant="subtle"
+                  icon="i-lucide-lock"
+                  title="Admin role required for Inspector controls"
+                  description="Sign in with an Admin account to advance the Virtual Clock or inject carrier faults."
+                  class="text-xs"
+                />
+              </Cannot>
+            </UCard>
+
             <!-- Virtual Clock -->
             <HexClockControls
               :clock="snapshot.clock"
@@ -142,7 +173,9 @@ function setExtraDelay(hours: number) {
               <dl class="divide-y divide-default rounded-md border border-default text-xs">
                 <div class="flex items-center justify-between gap-2 px-3 py-2">
                   <dt class="shrink-0 text-muted">PersistencePort</dt>
-                  <dd class="font-mono text-highlighted text-right break-all">{{ snapshot.adapters.persistence }}</dd>
+                  <dd class="font-mono text-highlighted text-right break-all">
+                    {{ snapshot.adapters.persistence }}
+                  </dd>
                 </div>
                 <div class="flex items-center justify-between gap-2 px-3 py-2">
                   <dt class="text-muted">CarrierGatewayPort</dt>
@@ -163,9 +196,7 @@ function setExtraDelay(hours: number) {
               </dl>
 
               <div v-if="snapshot.modules.length" class="space-y-1.5">
-                <p class="text-xs font-medium text-muted">
-                  Registered Local Nuxt Modules
-                </p>
+                <p class="text-xs font-medium text-muted">Registered Local Nuxt Modules</p>
                 <div class="flex flex-wrap gap-1.5">
                   <UBadge
                     v-for="mod in snapshot.modules"

@@ -21,7 +21,8 @@
     "test:integration": "vitest run --project integration",
     "test:arch": "vitest run --project arch",
     "test:nuxt": "vitest run --project nuxt",
-    "test:e2e": "vitest run --project e2e"
+    "test:e2e": "vitest run --project e2e",
+    "new:context": "node scripts/new-context.mjs"
   },
   "dependencies": {
     "@iconify-json/lucide": "^1.2.0",
@@ -31,6 +32,8 @@
     "drizzle-orm": "^0.45.0",
     "evlog": "^2.37.1",
     "nuxt": "^4.0.0",
+    "nuxt-auth-utils": "^0.6.2",
+    "nuxt-authorization": "^0.3.5",
     "vue": "^3.5.0",
     "vue-router": "^4.5.0",
     "zod": "^4.0.0"
@@ -47,13 +50,5 @@
     "typescript": "^5.8.0",
     "vitest": "^4.0.0",
     "vue-tsc": "^3.0.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@parcel/watcher",
-      "better-sqlite3",
-      "esbuild",
-      "unrs-resolver"
-    ]
   }
 }

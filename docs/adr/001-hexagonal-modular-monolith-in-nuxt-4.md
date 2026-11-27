@@ -25,4 +25,4 @@ We combine two complementary architectures natively supported by Nuxt 4:
 ## Consequences
 
 - **Positive:** Domain unit tests execute in `<100ms` in pure Node with zero Nuxt boot; replacing example domains with new contexts requires only deleting `modules/warehouse/` and `modules/delivery/` and dropping in `modules/<your-context>/`.
-- **Trade-off:** Requires discipline around layer boundaries, which we automate via 4 enforcement layers (`tsconfig.domain.json`, build-time Nuxt module hook, ESLint restricted imports, and Vitest import-graph assertions).
+- **Trade-off:** Requires discipline around layer boundaries, which we automate via 4 enforcement layers (`tsconfig.domain.json`, build-time Nuxt module hook, Oxlint restricted imports, and Vitest import-graph assertions).

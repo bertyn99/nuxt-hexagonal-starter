@@ -1,3 +1,4 @@
+import type { ExecutionContext } from '../../../../hexagonal-kernel/core/application/use-case'
 import type { WarehousePublicFacade } from '../../../../warehouse/core/application/warehouse-public.facade'
 import type {
   AvailableWarehouseCargo,
@@ -12,9 +13,9 @@ import type {
 export class LocalWarehouseStockAdapter implements WarehouseStockPort {
   constructor(private readonly getWarehouseFacade: () => Promise<WarehousePublicFacade>) {}
 
-  async listAvailableCargo(): Promise<AvailableWarehouseCargo[]> {
+  async listAvailableCargo(ctx?: ExecutionContext): Promise<AvailableWarehouseCargo[]> {
     const facade = await this.getWarehouseFacade()
-    const items = await facade.listAvailableCargo()
+    const items = await facade.listAvailableCargo(ctx)
     return items.map(item => ({
       binId: item.binId,
       binCode: item.binCode,
@@ -29,9 +30,13 @@ export class LocalWarehouseStockAdapter implements WarehouseStockPort {
     }))
   }
 
-  async allocateCargo(cargoId: string, shipmentId: string): Promise<AvailableWarehouseCargo> {
+  async allocateCargo(
+    cargoId: string,
+    shipmentId: string,
+    ctx?: ExecutionContext,
+  ): Promise<AvailableWarehouseCargo> {
     const facade = await this.getWarehouseFacade()
-    const allocated = await facade.allocateCargoForShipment({ cargoId, shipmentId })
+    const allocated = await facade.allocateCargoForShipment({ cargoId, shipmentId }, ctx)
     return {
       binId: allocated.binId,
       binCode: allocated.binCode,
@@ -44,5 +49,10 @@ export class LocalWarehouseStockAdapter implements WarehouseStockPort {
       volumeM3: allocated.volumeM3,
       itemCount: allocated.itemCount,
     }
+  }
+
+  async releaseCargo(cargoId: string, ctx?: ExecutionContext): Promise<void> {
+    const facade = await this.getWarehouseFacade()
+    await facade.returnCargoToWarehouse({ cargoId }, ctx)
   }
 }

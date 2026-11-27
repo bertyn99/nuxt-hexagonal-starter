@@ -1,5 +1,5 @@
 import { resolve } from 'node:path'
-import { log } from 'evlog'
+import { createError, log } from 'evlog'
 import { registerAuditLogSubscriber } from '../../../core/application/audit-log.subscriber'
 import type { AuditLogPort } from '../../../core/application/ports/audit-log.port'
 import type { ClockPort, ControllableClockPort } from '../../../core/application/ports/clock.port'
@@ -178,6 +178,19 @@ export function resetHexagonalKernel(
   kernelInstance?.shutdown()
   kernelInstance = createHexagonalKernel(overrideConfig)
   return kernelInstance
+}
+
+export function assertInspectorEnabled(kernel: HexagonalKernelRuntime): void {
+  if (!kernel.config.inspector) {
+    throw createError({
+      code: 'INSPECTOR_DISABLED',
+      message: 'Architecture Inspector is disabled',
+      status: 404,
+      why: 'hexagonal.inspector is set to false in runtime configuration',
+      fix: 'Enable hexagonal.inspector in nuxt.config.ts (development/staging only)',
+      data: { code: 'INSPECTOR_DISABLED' },
+    })
+  }
 }
 
 export function shutdownHexagonalKernel(): void {

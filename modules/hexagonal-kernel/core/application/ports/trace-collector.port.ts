@@ -1,5 +1,6 @@
 export type HexagonalLayer =
   | 'driving-adapter'
+  | 'authorization'
   | 'application'
   | 'domain'
   | 'driven-adapter'

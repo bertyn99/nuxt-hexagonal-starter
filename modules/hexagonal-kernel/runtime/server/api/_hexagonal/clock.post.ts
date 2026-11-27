@@ -1,7 +1,10 @@
 import { createError, useLogger } from 'evlog'
 import { defineEventHandler } from 'h3'
 import { z } from 'zod'
-import { useHexagonalKernel } from '../../utils/hexagonal-kernel'
+import { requireActorFromEvent } from '../../utils/actor-context'
+import { hasAnyRole } from '../../../../core/domain/actor'
+import { ForbiddenError } from '../../../../core/domain/domain-error'
+import { assertInspectorEnabled, useHexagonalKernel } from '../../utils/hexagonal-kernel'
 import { mapDomainErrorToHttp, parseBodyWithSchema } from '../../utils/http-error-mapper'
 
 const clockActionSchema = z.discriminatedUnion('action', [
@@ -18,6 +21,15 @@ export default defineEventHandler(async event => {
   const log = useLogger(event)
   try {
     const kernel = useHexagonalKernel()
+    assertInspectorEnabled(kernel)
+    const actor = await requireActorFromEvent(event)
+    if (!hasAnyRole(actor, ['admin'])) {
+      throw new ForbiddenError('Only admin role can control the virtual clock', {
+        actorId: actor.id,
+        actorRoles: [...actor.roles],
+        required: 'admin',
+      })
+    }
     if (!kernel.controllableClock) {
       throw createError({
         code: 'CLOCK_NOT_CONTROLLABLE',
@@ -50,7 +62,7 @@ export default defineEventHandler(async event => {
     })
     log.audit({
       action: `hexagonal.clock.${body.action}`,
-      actor: { type: 'system', id: 'operator' },
+      actor: { type: 'user', id: actor.id },
       target: { type: 'clock', id: 'virtual-clock' },
       outcome: 'success',
       changes: {

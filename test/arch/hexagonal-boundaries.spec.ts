@@ -18,6 +18,8 @@ describe('Hexagonal & Modular Monolith Architectural Boundaries', () => {
       mkdirSync(join(tempRoot, 'modules/warehouse/core/domain'), { recursive: true })
       mkdirSync(join(tempRoot, 'modules/delivery/core/domain'), { recursive: true })
       mkdirSync(join(tempRoot, 'modules/delivery/core/application'), { recursive: true })
+      mkdirSync(join(tempRoot, 'modules/hexagonal-kernel/runtime/server/api'), { recursive: true })
+      mkdirSync(join(tempRoot, 'modules/auth/runtime/server/utils'), { recursive: true })
 
       // Violation 1: Framework import inside pure domain
       writeFileSync(
@@ -31,11 +33,18 @@ describe('Hexagonal & Modular Monolith Architectural Boundaries', () => {
         `import { WarehouseBin } from '../../../warehouse/core/domain/entities/warehouse-bin'\nexport const y = WarehouseBin\n`,
       )
 
+      // Violation 3: Reverse dependency from hexagonal-kernel -> sibling bounded context (auth)
+      writeFileSync(
+        join(tempRoot, 'modules/hexagonal-kernel/runtime/server/api/bad-endpoint.ts'),
+        `import { resolveAuthActorFromEvent } from '../../../../auth/runtime/server/utils/auth-context'\nexport const z = resolveAuthActorFromEvent\n`,
+      )
+
       const violations = checkHexagonalBoundaries(tempRoot)
       const rules = violations.map(v => v.rule)
 
       expect(rules).toContain('DOMAIN_PURITY')
       expect(rules).toContain('APPLICATION_ISOLATION')
+      expect(rules).toContain('KERNEL_ISOLATION')
     } finally {
       rmSync(tempRoot, { recursive: true, force: true })
     }

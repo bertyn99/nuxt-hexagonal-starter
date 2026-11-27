@@ -30,5 +30,6 @@ export type {
   StorageAllocationContext,
   StorageAllocationHandler,
 } from './policies/storage-allocation-chain'
+export * from './policies/warehouse-access.policy'
 export * from './events/warehouse.events'
 export * from './errors/warehouse.errors'

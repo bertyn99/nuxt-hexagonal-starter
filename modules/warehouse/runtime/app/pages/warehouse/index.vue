@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
-import type { HandlingClassDto, StorageZoneDto, StoredCargoDto } from '../../../../shared/types/warehouse'
+import { receiveWarehouseCargoAbility } from '../../../../shared/abilities/warehouse.abilities'
+import type {
+  HandlingClassDto,
+  StorageZoneDto,
+  StoredCargoDto,
+} from '../../../../shared/types/warehouse'
 
 definePageMeta({
   title: 'Warehouse Storage (WMS)',
@@ -52,7 +57,7 @@ const zoneTabs = computed(() => {
 
 const filteredBins = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
-  return bins.value.filter((bin) => {
+  return bins.value.filter(bin => {
     if (selectedZone.value !== 'ALL' && bin.zone !== selectedZone.value) {
       return false
     }
@@ -60,12 +65,12 @@ const filteredBins = computed(() => {
       return true
     }
     return (
-      bin.code.toLowerCase().includes(q)
-      || bin.storedCargo.some(
+      bin.code.toLowerCase().includes(q) ||
+      bin.storedCargo.some(
         cargo =>
-          cargo.sku.toLowerCase().includes(q)
-          || cargo.label.toLowerCase().includes(q)
-          || cargo.handlingClass.toLowerCase().includes(q),
+          cargo.sku.toLowerCase().includes(q) ||
+          cargo.label.toLowerCase().includes(q) ||
+          cargo.handlingClass.toLowerCase().includes(q),
       )
     )
   })
@@ -82,11 +87,11 @@ const allCargoRows = computed<FlattenedCargoRow[]>(() => {
     bin.storedCargo
       .filter(
         cargo =>
-          !q
-          || bin.code.toLowerCase().includes(q)
-          || cargo.sku.toLowerCase().includes(q)
-          || cargo.label.toLowerCase().includes(q)
-          || cargo.handlingClass.toLowerCase().includes(q),
+          !q ||
+          bin.code.toLowerCase().includes(q) ||
+          cargo.sku.toLowerCase().includes(q) ||
+          cargo.label.toLowerCase().includes(q) ||
+          cargo.handlingClass.toLowerCase().includes(q),
       )
       .map(cargo => ({
         ...cargo,
@@ -126,8 +131,7 @@ function resetFilters() {
 async function handleReleaseCargo(cargoId: string) {
   try {
     await releaseCargo(cargoId)
-  }
-  catch {
+  } catch {
     // Domain rejection toast is surfaced automatically by useWarehouse()
   }
 }
@@ -150,14 +154,21 @@ async function handleReleaseCargo(cargoId: string) {
           >
             Inspector
           </UButton>
-          <UButton
-            size="sm"
-            color="primary"
-            icon="i-lucide-package-plus"
-            @click="openReceiveModal()"
-          >
-            Receive Cargo
-          </UButton>
+          <Can :ability="receiveWarehouseCargoAbility">
+            <UButton
+              size="sm"
+              color="primary"
+              icon="i-lucide-package-plus"
+              @click="openReceiveModal()"
+            >
+              Receive Cargo
+            </UButton>
+          </Can>
+          <Cannot :ability="receiveWarehouseCargoAbility">
+            <UButton size="sm" color="neutral" variant="subtle" icon="i-lucide-lock" to="/login">
+              Sign in (WMS Role)
+            </UButton>
+          </Cannot>
         </template>
       </UDashboardNavbar>
 
@@ -204,7 +215,9 @@ async function handleReleaseCargo(cargoId: string) {
           icon="i-lucide-alert-circle"
           title="Unable to load warehouse bins"
           :description="loadError"
-          :actions="[{ label: 'Retry', color: 'error', variant: 'outline', onClick: refreshWarehouse }]"
+          :actions="[
+            { label: 'Retry', color: 'error', variant: 'outline', onClick: refreshWarehouse },
+          ]"
         />
 
         <!-- Unified Telemetry Strip -->
@@ -216,7 +229,9 @@ async function handleReleaseCargo(cargoId: string) {
           <div class="p-4 space-y-2">
             <div class="flex items-center justify-between text-xs text-muted">
               <span class="font-medium">Overall Bin Utilization</span>
-              <span class="font-mono font-semibold text-highlighted tabular-nums">{{ utilization.overallUtilizationPercent }}%</span>
+              <span class="font-mono font-semibold text-highlighted tabular-nums"
+                >{{ utilization.overallUtilizationPercent }}%</span
+              >
             </div>
             <UProgress :model-value="utilization.overallUtilizationPercent" size="sm" />
             <p class="text-[11px] text-muted tabular-nums">
@@ -243,7 +258,8 @@ async function handleReleaseCargo(cargoId: string) {
           <div class="p-4 flex flex-col justify-between gap-1">
             <span class="text-xs font-medium text-muted">Bins Near Threshold (≥85%)</span>
             <p class="text-2xl font-semibold tabular-nums text-highlighted">
-              {{ utilization.binsNearCapacity }} <span class="text-sm font-normal text-muted">/ {{ utilization.totalBins }}</span>
+              {{ utilization.binsNearCapacity }}
+              <span class="text-sm font-normal text-muted">/ {{ utilization.totalBins }}</span>
             </p>
             <p class="text-[11px] text-muted">Emits BinThresholdReached</p>
           </div>
@@ -265,7 +281,9 @@ async function handleReleaseCargo(cargoId: string) {
           icon="i-lucide-warehouse"
           title="No storage bays match your filter"
           description="Clear the search query or switch back to All Zones to inspect all warehouse bays."
-          :actions="[{ label: 'Reset filters', color: 'neutral', variant: 'outline', onClick: resetFilters }]"
+          :actions="[
+            { label: 'Reset filters', color: 'neutral', variant: 'outline', onClick: resetFilters },
+          ]"
         />
 
         <!-- Inventory Ledger Table -->
@@ -277,7 +295,8 @@ async function handleReleaseCargo(cargoId: string) {
                   Stored Cargo Inventory Ledger
                 </h2>
                 <p class="text-xs text-muted">
-                  Owned exclusively by <code>modules/warehouse/</code> — exposed to Delivery only via <code>WarehousePublicFacade</code>.
+                  Owned exclusively by <code>modules/warehouse/</code> — exposed to Delivery only
+                  via <code>WarehousePublicFacade</code>.
                 </p>
               </div>
               <UBadge color="neutral" variant="subtle" class="tabular-nums">
@@ -288,7 +307,9 @@ async function handleReleaseCargo(cargoId: string) {
 
           <UTable :data="allCargoRows" :columns="cargoColumns" :loading="loading">
             <template #binCode-cell="{ row }">
-              <span class="font-mono text-xs font-semibold text-highlighted">{{ row.original.binCode }}</span>
+              <span class="font-mono text-xs font-semibold text-highlighted">{{
+                row.original.binCode
+              }}</span>
             </template>
 
             <template #kind-cell="{ row }">

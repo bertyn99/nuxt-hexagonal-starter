@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { ExecutionContext } from '../../modules/hexagonal-kernel/core/application/use-case'
 import {
   InMemoryAuditLogAdapter,
   InMemoryTraceCollectorAdapter,
@@ -166,26 +167,47 @@ describe('Delivery Bounded Context — State Machine, Strategies, Chains & Clock
       seed: false,
     })
 
-    // 1. Delivery allocates cargo from Warehouse via ACL
-    const created = await delivery.createShipmentFromWarehouse.execute({
-      cargoId: 'cargo-cross-1',
-      destination: 'Brussels Logistics Hub, BE',
-      carrierMode: 'STANDARD_GROUND',
-    })
+    const dispatcherCtx: ExecutionContext = {
+      actor: {
+        id: 'usr-dispatcher',
+        email: 'dispatcher@hexlogix.dev',
+        name: 'Sora Takahashi',
+        roles: ['dispatcher'],
+      },
+    }
+
+    // 1. Delivery allocates cargo from Warehouse via ACL (forwarding ExecutionContext)
+    const created = await delivery.createShipmentFromWarehouse.execute(
+      {
+        cargoId: 'cargo-cross-1',
+        destination: 'Brussels Logistics Hub, BE',
+        carrierMode: 'STANDARD_GROUND',
+      },
+      dispatcherCtx,
+    )
 
     const binAfterAlloc = await warehouse.binRepository.findById('bin-x1')
     expect(binAfterAlloc?.findCargo('cargo-cross-1')?.status).toBe('ALLOCATED')
 
     // 2. Dispatch -> InTransit -> OutForDelivery -> 3 failed attempts -> ReturnedToWarehouse event
-    await delivery.dispatchShipment.execute({ shipmentId: created.id })
-    await delivery.advanceTransit.execute({ shipmentId: created.id })
-    await delivery.advanceTransit.execute({ shipmentId: created.id })
-    await delivery.recordAttemptFailure.execute({ shipmentId: created.id, reason: 'Attempt 1' })
-    await delivery.recordAttemptFailure.execute({ shipmentId: created.id, reason: 'Attempt 2' })
-    const finalFail = await delivery.recordAttemptFailure.execute({
-      shipmentId: created.id,
-      reason: 'Attempt 3',
-    })
+    await delivery.dispatchShipment.execute({ shipmentId: created.id }, dispatcherCtx)
+    await delivery.advanceTransit.execute({ shipmentId: created.id }, dispatcherCtx)
+    await delivery.advanceTransit.execute({ shipmentId: created.id }, dispatcherCtx)
+    await delivery.recordAttemptFailure.execute(
+      { shipmentId: created.id, reason: 'Attempt 1' },
+      dispatcherCtx,
+    )
+    await delivery.recordAttemptFailure.execute(
+      { shipmentId: created.id, reason: 'Attempt 2' },
+      dispatcherCtx,
+    )
+    const finalFail = await delivery.recordAttemptFailure.execute(
+      {
+        shipmentId: created.id,
+        reason: 'Attempt 3',
+      },
+      dispatcherCtx,
+    )
 
     expect(finalFail.shipment.state).toBe('ReturnedToWarehouse')
 

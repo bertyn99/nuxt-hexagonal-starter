@@ -20,7 +20,7 @@ export default defineNuxtModule<HexagonalModuleOptions>({
     persistence: 'drizzle-sqlite',
     carrier: 'simulated',
     clock: 'virtual',
-    inspector: true,
+    inspector: undefined,
     sqlitePath: '.data/logistics.sqlite',
   },
   setup(options, nuxt) {
@@ -31,7 +31,7 @@ export default defineNuxtModule<HexagonalModuleOptions>({
       persistence: options.persistence ?? 'drizzle-sqlite',
       carrier: options.carrier ?? 'simulated',
       clock: options.clock ?? 'virtual',
-      inspector: options.inspector ?? true,
+      inspector: options.inspector ?? process.env.NODE_ENV !== 'production',
       sqlitePath: options.sqlitePath ?? '.data/logistics.sqlite',
     }
 

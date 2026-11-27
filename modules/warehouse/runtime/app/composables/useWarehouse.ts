@@ -39,10 +39,7 @@ export function useWarehouse() {
   }
 
   async function invalidateAfterMutation() {
-    clearNuxtData([
-      API_CACHE_KEYS.deliveryAvailableCargo,
-      API_CACHE_KEYS.hexInspector,
-    ])
+    clearNuxtData([API_CACHE_KEYS.deliveryAvailableCargo, API_CACHE_KEYS.hexInspector])
     await refreshNuxtData([
       API_CACHE_KEYS.warehouseBins,
       API_CACHE_KEYS.warehouseUtilization,

@@ -131,6 +131,43 @@
       }
     },
     {
+      "files": ["modules/hexagonal-kernel/**/*.{ts,vue}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/auth/**", "**/warehouse/**", "**/delivery/**"],
+                "message": "Kernel Isolation: hexagonal-kernel must NEVER import any bounded context module. Register ports or resolvers from the module into the kernel instead."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["modules/auth/**/*.{ts,vue}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/warehouse/core/domain/**",
+                  "**/warehouse/core/infrastructure/**",
+                  "**/delivery/core/domain/**",
+                  "**/delivery/core/infrastructure/**"
+                ],
+                "message": "Modular Monolith Isolation: auth must NEVER import warehouse or delivery domain/infrastructure layers."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "files": ["modules/delivery/**/*.{ts,vue}"],
       "rules": {
         "no-restricted-imports": [
@@ -138,8 +175,13 @@
           {
             "patterns": [
               {
-                "group": ["**/warehouse/core/domain/**", "**/warehouse/core/infrastructure/**"],
-                "message": "Modular Monolith Isolation: delivery must NEVER import warehouse/core/domain or warehouse/core/infrastructure. Use WarehouseStockPort ACL or Domain Events."
+                "group": [
+                  "**/warehouse/core/domain/**",
+                  "**/warehouse/core/infrastructure/**",
+                  "**/auth/core/domain/**",
+                  "**/auth/core/infrastructure/**"
+                ],
+                "message": "Modular Monolith Isolation: delivery must NEVER import sibling context core/domain or core/infrastructure. Use ACL ports or Domain Events."
               }
             ]
           }
@@ -154,8 +196,13 @@
           {
             "patterns": [
               {
-                "group": ["**/delivery/core/domain/**", "**/delivery/core/infrastructure/**"],
-                "message": "Modular Monolith Isolation: warehouse must NEVER import delivery/core/domain or delivery/core/infrastructure."
+                "group": [
+                  "**/delivery/core/domain/**",
+                  "**/delivery/core/infrastructure/**",
+                  "**/auth/core/domain/**",
+                  "**/auth/core/infrastructure/**"
+                ],
+                "message": "Modular Monolith Isolation: warehouse must NEVER import sibling context core/domain or core/infrastructure."
               }
             ]
           }
@@ -185,6 +232,11 @@
                   "zod",
                   "evlog",
                   "evlog/*",
+                  "nuxt-auth-utils",
+                  "nuxt-authorization",
+                  "nuxt-authorization/*",
+                  "better-auth",
+                  "better-auth/*",
                   "#imports",
                   "#app",
                   "#nitro",
@@ -198,6 +250,7 @@
                   "**/core/application/**",
                   "**/runtime/**",
                   "**/shared/**",
+                  "**/auth/core/domain/**",
                   "**/warehouse/core/domain/**",
                   "**/delivery/core/domain/**"
                 ],
@@ -231,6 +284,11 @@
                   "zod",
                   "evlog",
                   "evlog/*",
+                  "nuxt-auth-utils",
+                  "nuxt-authorization",
+                  "nuxt-authorization/*",
+                  "better-auth",
+                  "better-auth/*",
                   "#imports",
                   "#app",
                   "#nitro",
@@ -243,6 +301,7 @@
                   "**/core/infrastructure/**",
                   "**/runtime/**",
                   "**/shared/**",
+                  "**/auth/core/domain/**",
                   "**/warehouse/core/domain/**",
                   "**/delivery/core/domain/**"
                 ],

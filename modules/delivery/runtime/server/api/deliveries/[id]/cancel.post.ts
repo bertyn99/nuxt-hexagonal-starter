@@ -1,5 +1,6 @@
 import { useLogger } from 'evlog'
 import { defineEventHandler, readBody } from 'h3'
+import { resolveExecutionContext } from '../../../../../../hexagonal-kernel/runtime/server/utils/actor-context'
 import {
   mapDomainErrorToHttp,
   requireRouterParam,
@@ -10,18 +11,25 @@ import { useDeliveryModule } from '../../../utils/delivery-container'
 export default defineEventHandler(async event => {
   const log = useLogger(event)
   try {
+    const ctx = await resolveExecutionContext(event)
     const shipmentId = requireRouterParam(event, 'id', 'shipment id')
     const raw = await readBody(event).catch(() => undefined)
     const parsed = cancelShipmentRequestSchema.safeParse(raw)
     const reason = parsed.success ? parsed.data?.reason : undefined
 
-    log.set({ shipment: { action: 'cancel', id: shipmentId, hasReason: Boolean(reason) } })
+    log.set({
+      actor: { id: ctx.actor.id, roles: [...ctx.actor.roles] },
+      shipment: { action: 'cancel', id: shipmentId, hasReason: Boolean(reason) },
+    })
 
     const delivery = await useDeliveryModule()
-    const cancelled = await delivery.cancelShipment.execute({
-      shipmentId,
-      reason,
-    })
+    const cancelled = await delivery.cancelShipment.execute(
+      {
+        shipmentId,
+        reason,
+      },
+      ctx,
+    )
 
     log.set({
       shipment: {
@@ -31,7 +39,7 @@ export default defineEventHandler(async event => {
     })
     log.audit({
       action: 'delivery.shipment.cancel',
-      actor: { type: 'system', id: 'operator' },
+      actor: { type: 'user', id: ctx.actor.id },
       target: { type: 'shipment', id: cancelled.id },
       outcome: 'success',
       reason,

@@ -2,7 +2,11 @@
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { createShipmentRequestSchema } from '../../../shared/schemas/delivery.schema'
 import type { CreateShipmentRequest } from '../../../shared/schemas/delivery.schema'
-import type { AvailableCargoDto, CarrierModeDto, DeliveryQuoteDto } from '../../../shared/types/delivery'
+import type {
+  AvailableCargoDto,
+  CarrierModeDto,
+  DeliveryQuoteDto,
+} from '../../../shared/types/delivery'
 
 const props = defineProps<{
   availableCargo: readonly AvailableCargoDto[]
@@ -19,7 +23,7 @@ const { createShipment } = useDeliveries()
 const submitting = shallowRef(false)
 const submitError = shallowRef<string | null>(null)
 
-const carrierOptions: { label: string, value: CarrierModeDto, description: string }[] = [
+const carrierOptions: { label: string; value: CarrierModeDto; description: string }[] = [
   {
     label: 'Standard Ground Freight',
     value: 'STANDARD_GROUND',
@@ -50,8 +54,8 @@ const cargoOptions = computed(() =>
   })),
 )
 
-const selectedCargo = computed(() =>
-  props.availableCargo.find(item => item.cargoId === state.cargoId) ?? null,
+const selectedCargo = computed(
+  () => props.availableCargo.find(item => item.cargoId === state.cargoId) ?? null,
 )
 
 watch(
@@ -79,7 +83,11 @@ const quoteBody = computed(() => {
   }
 })
 
-const { data: quote, error: quoteFetchError, status: quoteStatus } = useAPI<DeliveryQuoteDto>('/api/deliveries/quote', {
+const {
+  data: quote,
+  error: quoteFetchError,
+  status: quoteStatus,
+} = useAPI<DeliveryQuoteDto>('/api/deliveries/quote', {
   key: () => `delivery:quote:${state.cargoId}:${state.carrierMode}`,
   method: 'POST',
   body: quoteBody,
@@ -102,11 +110,9 @@ async function onSubmit(event: FormSubmitEvent<CreateShipmentRequest>) {
     await createShipment(event.data, { silentErrorToast: true })
     open.value = false
     emit('created')
-  }
-  catch (err: unknown) {
+  } catch (err: unknown) {
     submitError.value = formatApiError(err, 'Failed to create shipment').details
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -146,12 +152,7 @@ async function onSubmit(event: FormSubmitEvent<CreateShipmentRequest>) {
         />
 
         <UFormField label="Available Warehouse Cargo (via ACL)" name="cargoId" required>
-          <USelect
-            v-model="state.cargoId"
-            :items="cargoOptions"
-            value-key="value"
-            class="w-full"
-          />
+          <USelect v-model="state.cargoId" :items="cargoOptions" value-key="value" class="w-full" />
         </UFormField>
 
         <UFormField label="Carrier Strategy" name="carrierMode" required>
@@ -165,7 +166,11 @@ async function onSubmit(event: FormSubmitEvent<CreateShipmentRequest>) {
         </UFormField>
 
         <UFormField label="Destination Address" name="destination" required>
-          <UInput v-model="state.destination" placeholder="e.g. Rotterdam Europort Terminal, NL" class="w-full" />
+          <UInput
+            v-model="state.destination"
+            placeholder="e.g. Rotterdam Europort Terminal, NL"
+            class="w-full"
+          />
         </UFormField>
 
         <!-- Live Quote Preview -->
@@ -195,7 +200,10 @@ async function onSubmit(event: FormSubmitEvent<CreateShipmentRequest>) {
           </p>
         </div>
 
-        <div v-else-if="quoteStatus === 'pending'" class="space-y-2 rounded-md border border-default p-3.5">
+        <div
+          v-else-if="quoteStatus === 'pending'"
+          class="space-y-2 rounded-md border border-default p-3.5"
+        >
           <USkeleton class="h-4 w-48" />
           <USkeleton class="h-3 w-full" />
         </div>
@@ -203,9 +211,7 @@ async function onSubmit(event: FormSubmitEvent<CreateShipmentRequest>) {
     </template>
 
     <template #footer="{ close }">
-      <UButton color="neutral" variant="outline" @click="close">
-        Cancel
-      </UButton>
+      <UButton color="neutral" variant="outline" @click="close"> Cancel </UButton>
       <UButton
         v-if="availableCargo.length > 0"
         type="submit"

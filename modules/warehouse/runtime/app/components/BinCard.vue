@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import {
+  receiveWarehouseCargoAbility,
+  releaseWarehouseCargoAbility,
+} from '../../../shared/abilities/warehouse.abilities'
 import type {
   HandlingClassDto,
   StorageZoneDto,
@@ -13,6 +17,9 @@ const emit = defineEmits<{
   receiveIntoBin: [binId: string]
   releaseCargo: [cargoId: string]
 }>()
+
+const { hasRole } = useAuth()
+const canReceiveCargo = computed(() => hasRole('warehouse_operator'))
 
 const zoneColor: Record<StorageZoneDto, 'neutral' | 'info' | 'error'> = {
   AMBIENT: 'neutral',
@@ -40,7 +47,9 @@ const handlingColor: Record<HandlingClassDto, 'neutral' | 'warning' | 'info' | '
   <UCard :ui="{ body: 'space-y-4 p-4 sm:p-5' }">
     <div class="flex items-start justify-between gap-3">
       <div class="flex items-start gap-2.5 min-w-0">
-        <div class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-default bg-elevated/60">
+        <div
+          class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-default bg-elevated/60"
+        >
           <UIcon :name="zoneIcon[bin.zone]" class="size-4 text-highlighted" />
         </div>
         <div class="min-w-0">
@@ -67,15 +76,17 @@ const handlingColor: Record<HandlingClassDto, 'neutral' | 'warning' | 'info' | '
         </div>
       </div>
 
-      <UButton
-        size="xs"
-        color="primary"
-        variant="soft"
-        icon="i-lucide-plus"
-        @click="emit('receiveIntoBin', bin.id)"
-      >
-        Store Cargo
-      </UButton>
+      <Can :ability="receiveWarehouseCargoAbility">
+        <UButton
+          size="xs"
+          color="primary"
+          variant="soft"
+          icon="i-lucide-plus"
+          @click="emit('receiveIntoBin', bin.id)"
+        >
+          Store Cargo
+        </UButton>
+      </Can>
     </div>
 
     <div class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
@@ -117,7 +128,19 @@ const handlingColor: Record<HandlingClassDto, 'neutral' | 'warning' | 'info' | '
       icon="i-lucide-inbox"
       title="Bay is empty and ready for intake"
       description="Store a parcel or composite pallet into this bay."
-      :actions="[{ label: `Store into ${bin.code}`, size: 'xs', color: 'neutral', variant: 'outline', onClick: () => emit('receiveIntoBin', bin.id) }]"
+      :actions="
+        canReceiveCargo
+          ? [
+              {
+                label: `Store into ${bin.code}`,
+                size: 'xs',
+                color: 'neutral',
+                variant: 'outline',
+                onClick: () => emit('receiveIntoBin', bin.id),
+              },
+            ]
+          : undefined
+      "
     />
 
     <div v-else class="divide-y divide-default rounded-md border border-default">
@@ -129,9 +152,14 @@ const handlingColor: Record<HandlingClassDto, 'neutral' | 'warning' | 'info' | '
         <div class="flex min-w-0 items-start gap-3">
           <div
             class="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md"
-            :class="cargo.kind === 'PALLET' ? 'bg-primary/10 text-primary' : 'bg-elevated text-muted'"
+            :class="
+              cargo.kind === 'PALLET' ? 'bg-primary/10 text-primary' : 'bg-elevated text-muted'
+            "
           >
-            <UIcon :name="cargo.kind === 'PALLET' ? 'i-lucide-layers' : 'i-lucide-box'" class="size-4" />
+            <UIcon
+              :name="cargo.kind === 'PALLET' ? 'i-lucide-layers' : 'i-lucide-box'"
+              class="size-4"
+            />
           </div>
           <div class="min-w-0 space-y-1">
             <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -161,19 +189,25 @@ const handlingColor: Record<HandlingClassDto, 'neutral' | 'warning' | 'info' | '
           </div>
         </div>
 
-        <UTooltip
-          :text="cargo.status === 'ALLOCATED' ? 'Allocated to shipment — cancel shipment to release' : 'Release from bin'"
-        >
-          <UButton
-            size="xs"
-            color="neutral"
-            variant="ghost"
-            icon="i-lucide-trash-2"
-            :aria-label="`Release ${cargo.label}`"
-            :disabled="cargo.status === 'ALLOCATED'"
-            @click="emit('releaseCargo', cargo.cargoId)"
-          />
-        </UTooltip>
+        <Can :ability="releaseWarehouseCargoAbility">
+          <UTooltip
+            :text="
+              cargo.status === 'ALLOCATED'
+                ? 'Allocated to shipment — cancel shipment to release'
+                : 'Release from bin'
+            "
+          >
+            <UButton
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              icon="i-lucide-trash-2"
+              :aria-label="`Release ${cargo.label}`"
+              :disabled="cargo.status === 'ALLOCATED'"
+              @click="emit('releaseCargo', cargo.cargoId)"
+            />
+          </UTooltip>
+        </Can>
       </div>
     </div>
   </UCard>

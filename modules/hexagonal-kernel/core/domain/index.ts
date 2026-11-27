@@ -1,9 +1,18 @@
+export { ROLES, SYSTEM_ACTOR, ANONYMOUS_ACTOR, isAuthenticatedActor, hasAnyRole } from './actor'
+export type { Actor, Role } from './actor'
 export { Entity } from './entity'
 export { AggregateRoot } from './aggregate-root'
 export { ValueObject } from './value-object'
 export { createDomainEvent } from './domain-event'
 export type { DomainEvent } from './domain-event'
-export { DomainError, ValidationDomainError, ok, err } from './domain-error'
+export {
+  DomainError,
+  ValidationDomainError,
+  UnauthorizedError,
+  ForbiddenError,
+  ok,
+  err,
+} from './domain-error'
 export type { DomainErrorStatusHint, Result } from './domain-error'
 export {
   HANDLING_CLASSES,

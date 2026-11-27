@@ -8,68 +8,54 @@ import type { DomainErrorStatusHint } from '../../../core/domain/domain-error'
 
 const STATUS_MAP: Record<DomainErrorStatusHint, number> = {
   validation: 400,
+  unauthorized: 401,
   forbidden: 403,
   not_found: 404,
   conflict: 409,
   unavailable: 503,
 }
 
-interface DomainErrorGuidance {
+export interface DomainErrorGuidance {
   readonly title: string
   readonly fix: string
 }
 
-const DOMAIN_ERROR_GUIDANCE: Record<string, DomainErrorGuidance> = {
-  INCOMPATIBLE_STORAGE_ZONE: {
-    title: 'Storage zone incompatible with cargo handling class',
-    fix: 'Choose a warehouse bin whose storage zone matches the cargo handling requirements.',
-  },
-  BIN_CAPACITY_EXCEEDED: {
-    title: 'Warehouse bin capacity exceeded',
-    fix: 'Select another bin with enough remaining weight/volume capacity or split the cargo.',
-  },
-  CARGO_NOT_FOUND_IN_BIN: {
-    title: 'Cargo unit not found',
-    fix: 'Verify the cargo ID and refresh the warehouse inventory.',
-  },
-  CARGO_ALREADY_ALLOCATED: {
-    title: 'Cargo unit already allocated',
-    fix: 'Choose an unallocated cargo unit or cancel the existing shipment first.',
-  },
-  WAREHOUSE_BIN_NOT_FOUND: {
-    title: 'Warehouse bin not found',
-    fix: 'Verify the bin ID against the current list of warehouse bins.',
-  },
-  DUPLICATE_CARGO_UNIT: {
-    title: 'Duplicate cargo unit',
-    fix: 'Use a unique cargo identifier or inspect the existing unit in the bin.',
-  },
-  INVALID_STATE_TRANSITION: {
-    title: 'Invalid shipment state transition',
-    fix: 'Check the current shipment state and perform an allowed lifecycle transition.',
-  },
-  CANNOT_CANCEL_DISPATCHED_SHIPMENT: {
-    title: 'Cannot cancel dispatched shipment',
-    fix: 'Only shipments in PendingDispatch can be cancelled. Record a delivery exception instead.',
-  },
-  SHIPMENT_NOT_FOUND: {
-    title: 'Shipment not found',
-    fix: 'Verify the shipment ID and refresh the deliveries list.',
-  },
-  CARRIER_HANDLING_NOT_SUPPORTED: {
-    title: 'Carrier does not support cargo handling class',
-    fix: 'Select a carrier mode that supports this cargo handling class (e.g. COLD_CHAIN_COURIER for cold chain).',
-  },
-  CARRIER_GATEWAY_UNAVAILABLE: {
-    title: 'Carrier gateway unavailable',
-    fix: 'Disable simulated carrier outage in the Architecture Inspector or retry when the carrier recovers.',
-  },
+/**
+ * Dynamic error-guidance registry.
+ * Each bounded context registers its own domain error codes at module boot so
+ * hexagonal-kernel stays 100% domain-agnostic when example contexts are removed.
+ */
+const domainErrorGuidanceRegistry = new Map<string, DomainErrorGuidance>([
+  [
+    'UNAUTHORIZED',
+    {
+      title: 'Authentication required',
+      fix: 'Sign in at /login or switch to a demo persona in the sidebar/Inspector.',
+    },
+  ],
+  [
+    'FORBIDDEN',
+    {
+      title: 'Insufficient permissions',
+      fix: 'Sign in with an account that holds the required role or permission for this action.',
+    },
+  ],
+])
+
+export function registerDomainErrorGuidance(entries: Record<string, DomainErrorGuidance>): void {
+  for (const [code, guidance] of Object.entries(entries)) {
+    domainErrorGuidanceRegistry.set(code, guidance)
+  }
 }
 
 const DEFAULT_GUIDANCE_BY_HINT: Record<DomainErrorStatusHint, DomainErrorGuidance> = {
   validation: {
     title: 'Invalid domain input',
     fix: 'Check the submitted values and try again.',
+  },
+  unauthorized: {
+    title: 'Authentication required',
+    fix: 'Sign in to continue.',
   },
   forbidden: {
     title: 'Action forbidden by domain policy',
@@ -105,7 +91,8 @@ export function mapDomainErrorToHttp(error: unknown, event?: H3Event): never {
 
   if (error instanceof DomainError) {
     const status = STATUS_MAP[error.statusHint] ?? 400
-    const guidance = DOMAIN_ERROR_GUIDANCE[error.code] ?? DEFAULT_GUIDANCE_BY_HINT[error.statusHint]
+    const guidance =
+      domainErrorGuidanceRegistry.get(error.code) ?? DEFAULT_GUIDANCE_BY_HINT[error.statusHint]
 
     logger?.error(error, {
       domain: {

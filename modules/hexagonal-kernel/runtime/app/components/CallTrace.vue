@@ -7,6 +7,7 @@ defineProps<{
 
 const layerColors: Record<string, 'primary' | 'info' | 'success' | 'warning' | 'neutral'> = {
   'driving-adapter': 'neutral',
+  authorization: 'warning',
   application: 'info',
   domain: 'primary',
   'driven-adapter': 'warning',
@@ -15,6 +16,7 @@ const layerColors: Record<string, 'primary' | 'info' | 'success' | 'warning' | '
 
 const layerLabels: Record<string, string> = {
   'driving-adapter': 'Driving Adapter',
+  authorization: 'RBAC Guard',
   application: 'Application',
   domain: 'Pure Domain',
   'driven-adapter': 'Driven Adapter',
@@ -74,7 +76,9 @@ const layerLabels: Record<string, string> = {
               {{ step.detail }}
             </p>
           </div>
-          <span class="shrink-0 font-mono text-[10px] text-dimmed tabular-nums">{{ step.durationMs }}ms</span>
+          <span class="shrink-0 font-mono text-[10px] text-dimmed tabular-nums"
+            >{{ step.durationMs }}ms</span
+          >
         </div>
       </div>
 

@@ -41,5 +41,6 @@ export type {
 } from './policies/delivery-exception-chain'
 export { Shipment } from './entities/shipment'
 export type { CargoSummary, ShipmentSnapshot } from './entities/shipment'
+export * from './policies/delivery-access.policy'
 export * from './events/delivery.events'
 export * from './errors/delivery.errors'

@@ -1,5 +1,6 @@
 import { useLogger } from 'evlog'
 import { defineEventHandler, setResponseStatus } from 'h3'
+import { resolveExecutionContext } from '../../../../../hexagonal-kernel/runtime/server/utils/actor-context'
 import {
   mapDomainErrorToHttp,
   parseBodyWithSchema,
@@ -10,8 +11,10 @@ import { useDeliveryModule } from '../../utils/delivery-container'
 export default defineEventHandler(async event => {
   const log = useLogger(event)
   try {
+    const ctx = await resolveExecutionContext(event)
     const payload = await parseBodyWithSchema(event, createShipmentRequestSchema)
     log.set({
+      actor: { id: ctx.actor.id, roles: [...ctx.actor.roles] },
       shipment: {
         action: 'create',
         cargoId: payload.cargoId,
@@ -21,7 +24,7 @@ export default defineEventHandler(async event => {
     })
 
     const delivery = await useDeliveryModule()
-    const created = await delivery.createShipmentFromWarehouse.execute(payload)
+    const created = await delivery.createShipmentFromWarehouse.execute(payload, ctx)
 
     log.set({
       shipment: {

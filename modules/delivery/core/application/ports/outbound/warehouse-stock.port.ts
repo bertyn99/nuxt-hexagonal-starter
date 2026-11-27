@@ -1,3 +1,4 @@
+import type { ExecutionContext } from '../../../../../hexagonal-kernel/core/application/use-case'
 import type { HandlingClass } from '../../../../../hexagonal-kernel/core/domain/handling-class'
 
 export interface AvailableWarehouseCargo {
@@ -18,6 +19,11 @@ export interface AvailableWarehouseCargo {
  * Translates Warehouse concepts into Delivery's own language without leaking Warehouse domain types.
  */
 export interface WarehouseStockPort {
-  listAvailableCargo(): Promise<AvailableWarehouseCargo[]>
-  allocateCargo(cargoId: string, shipmentId: string): Promise<AvailableWarehouseCargo>
+  listAvailableCargo(ctx?: ExecutionContext): Promise<AvailableWarehouseCargo[]>
+  allocateCargo(
+    cargoId: string,
+    shipmentId: string,
+    ctx?: ExecutionContext,
+  ): Promise<AvailableWarehouseCargo>
+  releaseCargo?(cargoId: string, ctx?: ExecutionContext): Promise<void>
 }

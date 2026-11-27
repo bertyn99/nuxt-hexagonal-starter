@@ -17,14 +17,16 @@ const utilization = computed(() => utilizationQuery.data.value ?? null)
 const shipments = computed(() => shipmentsQuery.data.value ?? [])
 const snapshot = computed(() => inspectorQuery.data.value ?? null)
 
-const refreshing = computed(() =>
-  utilizationQuery.status.value === 'pending'
-  || shipmentsQuery.status.value === 'pending'
-  || inspectorQuery.status.value === 'pending',
+const refreshing = computed(
+  () =>
+    utilizationQuery.status.value === 'pending' ||
+    shipmentsQuery.status.value === 'pending' ||
+    inspectorQuery.status.value === 'pending',
 )
 
 const loadError = computed(() => {
-  const err = utilizationQuery.error.value ?? shipmentsQuery.error.value ?? inspectorQuery.error.value
+  const err =
+    utilizationQuery.error.value ?? shipmentsQuery.error.value ?? inspectorQuery.error.value
   return err ? formatApiError(err, 'Failed to load overview metrics').details : null
 })
 
@@ -36,13 +38,9 @@ async function refreshAll() {
   ])
 }
 
-const activeShipmentsCount = computed(() =>
-  shipments.value.filter(s => !s.isTerminal).length,
-)
+const activeShipmentsCount = computed(() => shipments.value.filter(s => !s.isTerminal).length)
 
-const slaBreachCount = computed(() =>
-  shipments.value.filter(s => s.slaBreached).length,
-)
+const slaBreachCount = computed(() => shipments.value.filter(s => s.slaBreached).length)
 
 const onTimeRatePercent = computed(() => {
   if (shipments.value.length === 0) {
@@ -73,14 +71,15 @@ const lifecycleBreakdown = computed(() => {
   for (const s of shipments.value) {
     if (s.state === 'Delivered') {
       counts.delivered += 1
-    }
-    else if (s.state === 'Cancelled') {
+    } else if (s.state === 'Cancelled') {
       counts.cancelled += 1
-    }
-    else if (s.state === 'DeliveryAttemptFailed' || s.state === 'ReturnedToWarehouse' || s.slaBreached) {
+    } else if (
+      s.state === 'DeliveryAttemptFailed' ||
+      s.state === 'ReturnedToWarehouse' ||
+      s.slaBreached
+    ) {
       counts.exception += 1
-    }
-    else {
+    } else {
       counts.active += 1
     }
   }
@@ -102,9 +101,8 @@ const eventTabs = [
 
 const filteredEvents = computed(() => {
   const list = snapshot.value?.recentEvents ?? []
-  const scoped = eventFilter.value === 'all'
-    ? list
-    : list.filter(ev => ev.boundedContext === eventFilter.value)
+  const scoped =
+    eventFilter.value === 'all' ? list : list.filter(ev => ev.boundedContext === eventFilter.value)
   return scoped.slice(0, 12)
 })
 
@@ -113,19 +111,22 @@ const topologyItems = [
     path: 'modules/hexagonal-kernel/',
     role: 'Shared Platform',
     badgeColor: 'neutral' as const,
-    summary: 'Pure domain primitives (Entity, AggregateRoot, DomainError), EventBusPort, ClockPort, TracingUseCaseDecorator, and build-time boundary guard.',
+    summary:
+      'Pure domain primitives (Entity, AggregateRoot, DomainError), EventBusPort, ClockPort, TracingUseCaseDecorator, and build-time boundary guard.',
   },
   {
     path: 'modules/warehouse/',
     role: 'Bounded Context A',
     badgeColor: 'primary' as const,
-    summary: 'WarehouseBin aggregate, Composite CargoUnit (Parcel/Pallet), StorageAllocationChain (Zone → Weight → Volume), and swappable SQLite/Memory adapters.',
+    summary:
+      'WarehouseBin aggregate, Composite CargoUnit (Parcel/Pallet), StorageAllocationChain (Zone → Weight → Volume), and swappable SQLite/Memory adapters.',
   },
   {
     path: 'modules/delivery/',
     role: 'Bounded Context B',
     badgeColor: 'info' as const,
-    summary: 'Shipment State Machine, CarrierStrategy pricing, DeliveryExceptionChain (3-attempt return), and LocalWarehouseStockAdapter ACL.',
+    summary:
+      'Shipment State Machine, CarrierStrategy pricing, DeliveryExceptionChain (3-attempt return), and LocalWarehouseStockAdapter ACL.',
   },
 ]
 </script>
@@ -188,7 +189,8 @@ const topologyItems = [
                 {{ utilization?.overallUtilizationPercent ?? 0 }}%
               </p>
               <p class="mt-1 text-xs text-muted tabular-nums">
-                {{ utilization?.totalCargoUnits ?? 0 }} cargo units across {{ utilization?.totalBins ?? 0 }} bins
+                {{ utilization?.totalCargoUnits ?? 0 }} cargo units across
+                {{ utilization?.totalBins ?? 0 }} bins
               </p>
             </div>
           </div>
@@ -217,9 +219,7 @@ const topologyItems = [
               <p class="text-3xl font-semibold tracking-tight tabular-nums text-success">
                 {{ onTimeRatePercent }}%
               </p>
-              <p class="mt-1 text-xs text-muted">
-                Deterministic ClockPort window
-              </p>
+              <p class="mt-1 text-xs text-muted">Deterministic ClockPort window</p>
             </div>
           </div>
 
@@ -240,7 +240,11 @@ const topologyItems = [
                 {{ slaBreachCount }}
               </p>
               <p class="mt-1 text-xs text-muted">
-                {{ slaBreachCount > 0 ? 'Requires immediate dispatch review' : 'All active SLAs within window' }}
+                {{
+                  slaBreachCount > 0
+                    ? 'Requires immediate dispatch review'
+                    : 'All active SLAs within window'
+                }}
               </p>
             </div>
           </div>
@@ -259,7 +263,13 @@ const topologyItems = [
                     Peak weight or volume load per bounded storage zone
                   </p>
                 </div>
-                <UButton size="xs" color="neutral" variant="outline" to="/warehouse" trailing-icon="i-lucide-arrow-right">
+                <UButton
+                  size="xs"
+                  color="neutral"
+                  variant="outline"
+                  to="/warehouse"
+                  trailing-icon="i-lucide-arrow-right"
+                >
                   Open WMS
                 </UButton>
               </div>
@@ -288,14 +298,16 @@ const topologyItems = [
             <template #header>
               <div class="flex items-center justify-between gap-3">
                 <div>
-                  <h2 class="text-sm font-semibold text-highlighted">
-                    Shipment Status Breakdown
-                  </h2>
-                  <p class="text-xs text-muted">
-                    Current TMS lifecycle distribution
-                  </p>
+                  <h2 class="text-sm font-semibold text-highlighted">Shipment Status Breakdown</h2>
+                  <p class="text-xs text-muted">Current TMS lifecycle distribution</p>
                 </div>
-                <UButton size="xs" color="neutral" variant="outline" to="/deliveries" trailing-icon="i-lucide-arrow-right">
+                <UButton
+                  size="xs"
+                  color="neutral"
+                  variant="outline"
+                  to="/deliveries"
+                  trailing-icon="i-lucide-arrow-right"
+                >
                   Open TMS
                 </UButton>
               </div>
@@ -317,18 +329,26 @@ const topologyItems = [
                   <USkeleton class="h-[175px] w-full" />
                 </template>
               </ClientOnly>
-              <div class="grid grid-cols-3 divide-x divide-default border-t border-default pt-3 text-center">
+              <div
+                class="grid grid-cols-3 divide-x divide-default border-t border-default pt-3 text-center"
+              >
                 <div>
                   <p class="text-xs text-muted">In Flight</p>
-                  <p class="text-sm font-semibold tabular-nums text-info">{{ lifecycleBreakdown.active }}</p>
+                  <p class="text-sm font-semibold tabular-nums text-info">
+                    {{ lifecycleBreakdown.active }}
+                  </p>
                 </div>
                 <div>
                   <p class="text-xs text-muted">Delivered</p>
-                  <p class="text-sm font-semibold tabular-nums text-success">{{ lifecycleBreakdown.delivered }}</p>
+                  <p class="text-sm font-semibold tabular-nums text-success">
+                    {{ lifecycleBreakdown.delivered }}
+                  </p>
                 </div>
                 <div>
                   <p class="text-xs text-muted">Exceptions</p>
-                  <p class="text-sm font-semibold tabular-nums text-error">{{ lifecycleBreakdown.exception }}</p>
+                  <p class="text-sm font-semibold tabular-nums text-error">
+                    {{ lifecycleBreakdown.exception }}
+                  </p>
                 </div>
               </div>
             </div>
@@ -337,12 +357,12 @@ const topologyItems = [
 
         <!-- Asymmetric Topology (5) & Live Domain Events (7) -->
         <section class="grid grid-cols-1 gap-4 lg:grid-cols-12">
-          <div class="lg:col-span-5 rounded-lg border border-default bg-default p-4 sm:p-5 flex flex-col justify-between">
+          <div
+            class="lg:col-span-5 rounded-lg border border-default bg-default p-4 sm:p-5 flex flex-col justify-between"
+          >
             <div class="space-y-4">
               <div class="flex items-center justify-between gap-2">
-                <h2 class="text-sm font-semibold text-highlighted">
-                  Modular Monolith Topology
-                </h2>
+                <h2 class="text-sm font-semibold text-highlighted">Modular Monolith Topology</h2>
                 <UBadge color="success" variant="subtle" size="xs" icon="i-lucide-shield-check">
                   Boundary Guard Active
                 </UBadge>
@@ -355,8 +375,12 @@ const topologyItems = [
                   class="py-3.5 first:pt-3.5 last:pb-0 space-y-1.5"
                 >
                   <div class="flex items-center justify-between gap-2">
-                    <span class="font-mono text-xs font-semibold text-highlighted">{{ item.path }}</span>
-                    <UBadge :color="item.badgeColor" variant="subtle" size="xs">{{ item.role }}</UBadge>
+                    <span class="font-mono text-xs font-semibold text-highlighted">{{
+                      item.path
+                    }}</span>
+                    <UBadge :color="item.badgeColor" variant="subtle" size="xs">{{
+                      item.role
+                    }}</UBadge>
                   </div>
                   <p class="text-xs leading-relaxed text-muted">
                     {{ item.summary }}
@@ -365,9 +389,22 @@ const topologyItems = [
               </div>
             </div>
 
-            <div class="mt-4 pt-3 border-t border-default flex items-center justify-between text-xs text-muted">
-              <span>Live traces captured: <strong class="tabular-nums text-highlighted">{{ snapshot?.traces.length ?? 0 }}</strong></span>
-              <UButton size="xs" color="neutral" variant="ghost" trailing-icon="i-lucide-arrow-up-right" @click="openInspector">
+            <div
+              class="mt-4 pt-3 border-t border-default flex items-center justify-between text-xs text-muted"
+            >
+              <span
+                >Live traces captured:
+                <strong class="tabular-nums text-highlighted">{{
+                  snapshot?.traces.length ?? 0
+                }}</strong></span
+              >
+              <UButton
+                size="xs"
+                color="neutral"
+                variant="ghost"
+                trailing-icon="i-lucide-arrow-up-right"
+                @click="openInspector"
+              >
                 Inspect Ports
               </UButton>
             </div>
@@ -395,12 +432,11 @@ const topologyItems = [
               </div>
             </template>
 
-            <div v-if="filteredEvents.length > 0" class="divide-y divide-default max-h-80 overflow-y-auto px-4 sm:px-5">
-              <div
-                v-for="ev in filteredEvents"
-                :key="ev.id"
-                class="py-2.5 text-xs space-y-1"
-              >
+            <div
+              v-if="filteredEvents.length > 0"
+              class="divide-y divide-default max-h-80 overflow-y-auto px-4 sm:px-5"
+            >
+              <div v-for="ev in filteredEvents" :key="ev.id" class="py-2.5 text-xs space-y-1">
                 <div class="flex items-center justify-between gap-2">
                   <div class="flex items-center gap-2 min-w-0">
                     <UBadge
@@ -410,7 +446,9 @@ const topologyItems = [
                     >
                       {{ ev.boundedContext }}
                     </UBadge>
-                    <span class="truncate font-mono font-medium text-highlighted">{{ ev.eventName }}</span>
+                    <span class="truncate font-mono font-medium text-highlighted">{{
+                      ev.eventName
+                    }}</span>
                   </div>
                   <NuxtTime
                     :datetime="ev.occurredAt"
